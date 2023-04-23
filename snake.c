@@ -28,17 +28,18 @@ Although this program may compile/ run in Cygwin it runs slowly.
 #include <conio.h>
 #include <windows.h> 
 #define SNAKE_ARRAY_SIZE 310
+#define LOG(X, Y) fprintf (fp, #X ": Time:%s, File:%s(%d) " #Y  "\n", __TIMESTAMP__, __FILE__, __LINE__)
 void s_initialize
 {
-
+ FILE* log_file = fopen("mylog.txt", "a");
 }
 void s_dispose
 {
-
+ fclose(log_file);
 }
 void s_save
 {
-	
+
 }
 void load
 {
@@ -46,8 +47,14 @@ void load
 }
 void log
 {
-
-}
+	time_t now = time(NULL);
+    char timestamp[20];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    if (log_file != NULL)
+	{ 
+	fprintf(log_file, "[%s] %s\n", timestamp, message);
+	}
+} 
 typedef struct
 {
 	int round[10];
