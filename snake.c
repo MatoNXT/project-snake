@@ -28,7 +28,26 @@ Although this program may compile/ run in Cygwin it runs slowly.
 #include <conio.h>
 #include <windows.h> 
 #define SNAKE_ARRAY_SIZE 310
+void s_initialize
+{
 
+}
+void s_dispose
+{
+
+}
+void s_save
+{
+	
+}
+void load
+{
+
+}
+void log
+{
+
+}
 typedef struct
 {
 	int round[10];
@@ -41,18 +60,6 @@ typedef struct
 	int id;
 	SCORE;
 }STATS;
-void save
-{
-	
-}
-void load
-{
-
-}
-void log
-{
-
-}
 
 void gotoxy(int x, int y)
 {
@@ -63,99 +70,22 @@ void gotoxy(int x, int y)
 }
 void cls(void) 
 { printf("\033[1J\033[H"); }
-#ifdef _WIN32
-	//Windows Libraries
+//Windows Libraries
 
-	//Windows Constants
-	//Controls
-	#define UP_ARROW 72
-	#define LEFT_ARROW 75
-	#define RIGHT_ARROW 77
-	#define DOWN_ARROW 80
-	
-	#define ENTER_KEY 13
-	
-	const char SNAKE_HEAD = (char)177;
-	const char SNAKE_BODY = (char)178;
-	const char WALL = (char)219;	
-	const char FOOD = (char)254;
-	const char BLANK = ' ';
-#else
-	//Linux Libraries
-	#include <stdlib.h>
-	#include <termios.h>
-	#include <unistd.h>
-	#include <fcntl.h>
-	
-	//Linux Constants
+//Windows Constants
+//Controls
+#define UP_ARROW 72
+#define LEFT_ARROW 75
+#define RIGHT_ARROW 77
+#define DOWN_ARROW 80
 
-	//Controls (arrow keys for Ubuntu) 
-	#define UP_ARROW (char)'A' //Originally I used constants but borland started giving me errors, so I changed to #define - I do realize that is not the best way.
-	#define LEFT_ARROW (char)'D'
-	#define RIGHT_ARROW (char)'C'
-	#define DOWN_ARROW (char)'B'
+#define ENTER_KEY 13
 
-	#define ENTER_KEY 10
-	
-	const char SNAKE_HEAD = 'X';
-	const char SNAKE_BODY = '#';
-	const char WALL = '#';	
-	const char FOOD = '*';
-	const char BLANK = ' ';
-	
-	//Linux Functions - These functions emulate some functions from the windows only conio header file
-	//Code: http://ubuntuforums.org/showthread.php?t=549023
-	void gotoxy(int x,int y)
-	{
-		printf("%c[%d;%df",0x1B,y,x);
-	}
-
-	//http://cboard.cprogramming.com/c-programming/63166-kbhit-linux.html
-	int kbhit(void)
-	{
-	  struct termios oldt, newt;
-	  int ch;
-	  int oldf;
-
-	  tcgetattr(STDIN_FILENO, &oldt);
-	  newt = oldt;
-	  newt.c_lflag &= ~(ICANON | ECHO);
-	  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-	  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-	  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-	  ch = getchar();
-
-	  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-	  fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-	  if(ch != EOF)
-	  {
-		ungetc(ch, stdin);
-		return 1;
-	  }
-
-	  return 0;
-	}
-
-	//http://www.experts-exchange.com/Programming/Languages/C/Q_10119844.html - posted by jos
-	char getch()
-	{
-		char c;
-		system("stty raw");
-		c= getchar();
-		system("stty sane");
-		//printf("%c",c);
-		return(c);
-	}
-
-	void cls()
-	{
-		system("clear");
-		return;
-	}
-	//End linux Functions
-#endif
+const char SNAKE_HEAD = (char)177;
+const char SNAKE_BODY = (char)178;
+const char WALL = (char)219;	
+const char FOOD = (char)254;
+const char BLANK = ' ';
 
 //This should be the same on both operating systems
 #define EXIT_BUTTON 27 //ESC
