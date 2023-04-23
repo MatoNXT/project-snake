@@ -12,7 +12,7 @@ Compile with borland
 Linux:
 Please note, tested under Ubuntu not sure if it works in other linux environments. I recommend compiling with borland under windows for best results.
 Compile with gcc in linux using the following command:
-gcc snake.c -lm -o snake.out
+gcc snake.c �lm �o snake.out
 
 Cygwin:
 Although this program may compile/ run in Cygwin it runs slowly.	
@@ -27,56 +27,11 @@ Although this program may compile/ run in Cygwin it runs slowly.
 #include <string.h>
 #include <conio.h>
 #include <windows.h> 
+
 #define SNAKE_ARRAY_SIZE 310
-typedef struct
-{
-	int round[10];
-	int total;
-}SCORE;
-typedef struct 
-{
-	char name[];
-	char surname[];
-	int id;
-	SCORE;
-}STATS;
-void s_initialize
-{
- FILE* log_file = fopen("mylog.txt", "a");
-}
-void s_dispose
-{
- fclose(log_file);
-}
-void s_save
-{
 
-}
-void load
-{
-
-}
-void log
-{
-	time_t now = time(NULL);
-    char timestamp[20];
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
-    if (log_file != NULL)
-	{ 
-	fprintf(log_file, "[%s] %s\n", timestamp, message);
-	}
-} 
-
-void gotoxy(int x, int y)
-{
-  COORD coord;
-  coord.X = x;
-  coord.Y = y;
-  SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-}
-void cls(void) 
-{ printf("\033[1J\033[H"); }
 //Windows Libraries
+#include <conio.h>
 
 //Windows Constants
 //Controls
@@ -92,6 +47,8 @@ const char SNAKE_BODY = (char)178;
 const char WALL = (char)219;	
 const char FOOD = (char)254;
 const char BLANK = ' ';
+
+
 //This should be the same on both operating systems
 #define EXIT_BUTTON 27 //ESC
 #define PAUSE_BUTTON 112 //P
@@ -110,7 +67,7 @@ char waitForAnyKey(void)
 int getGameSpeed(void)
 {
 	int speed;
-	cls();
+	clrscr();
 	
 	do
 	{
@@ -395,7 +352,7 @@ void inputScore(int score) //This seriously needs to be cleaned up
 	
 	int entered = 0;
 	
-	cls(); //clear the console
+	clrscr(); //clear the console
 	
 	if((fp = fopen("highscores.txt", "r")) == NULL)
 	{
@@ -492,7 +449,7 @@ void displayHighScores(void) //NEED TO CHECK THIS CODE!!!
 	char str[128];
 	int y = 5;
 	
-	cls(); //clear the console
+	clrscr(); //clear the console
 	
 	if((fp = fopen("highscores.txt", "r")) == NULL) {
 		//Create the file, then try open it again.. if it fails this time exit.
@@ -543,7 +500,7 @@ void youWinScreen(void)
 	gotoxy(x,y++);	
 	
 	waitForAnyKey();
-	cls(); //clear the console
+	clrscr(); //clear the console
 	return;
 }
 
@@ -587,7 +544,7 @@ void gameOverScreen(void)
 	printf(":.......::::::...:::::........::..:::::..::....::\n");
 	
 	waitForAnyKey();
-	cls(); //clear the console
+	clrscr(); //clear the console
 	return;
 }
 
@@ -699,7 +656,7 @@ void loadEnviroment(int consoleWidth, int consoleHeight)//This can be done in a 
 	int i;
 	int x = 1, y = 1;
 	int rectangleHeight = consoleHeight - 4;
-	cls(); //clear the console
+	clrscr(); //clear the console
 	
 	gotoxy(x,y); //Top left corner
 	
@@ -888,7 +845,7 @@ int menuSelector(int x, int y, int yStart)
 
 void welcomeArt(void)
 {
-	cls(); //clear the console
+	clrscr(); //clear the console
 	//Ascii art reference: http://www.chris.com/ascii/index.php?art=animals/reptiles/snakes
 	printf("\n");	
 	printf("\t\t    _________         _________ 			\n");	
@@ -913,7 +870,7 @@ void welcomeArt(void)
 void controls(void)
 {
 	int x = 10, y = 5;
-	cls(); //clear the console
+	clrscr(); //clear the console
 	gotoxy(x,y++);
 	printf("Controls\n");
 	gotoxy(x++,y++);
@@ -950,7 +907,7 @@ void exitYN(void)
 	
 	if (pressed == 'y')
 	{
-		cls(); //clear the console
+		clrscr(); //clear the console
 		exit(1);
 	}
 	return;
@@ -963,7 +920,7 @@ int mainMenu(void)
 	
 	int selected;
 	
-	cls(); //clear the console
+	clrscr(); //clear the console
 	//Might be better with arrays of strings???
 	gotoxy(x,y++);
 	printf("New Game\n");
