@@ -27,43 +27,53 @@ Although this program may compile/ run in Cygwin it runs slowly.
 #include <string.h>
 #include <conio.h>
 #include <windows.h> 
+
 #define SNAKE_ARRAY_SIZE 310
+
+FILE* log_file;
+
 typedef struct
 {
 	int round[10];
 	int total;
 }SCORE;
+
 typedef struct 
 {
-	char name[];
-	char surname[];
+	char name[20];
+	char surname[20];
 	int id;
 	SCORE;
-}STATS;
-void s_initialize
+} STATS;
+
+void s_initialize()
 {
- FILE* log_file = fopen("mylog.txt", "a");
+	log_file = fopen("mylog.txt", "a");
 }
-void s_dispose
+
+void s_dispose()
 {
- fclose(log_file);
+	fclose(log_file);
 }
-void s_save
+
+void s_save()
 {
 
 }
-void load
+
+void s_load()
 {
 
 }
-void log
+
+void s_log(char message)
 {
 	time_t now = time(NULL);
     char timestamp[20];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
     if (log_file != NULL)
 	{ 
-	fprintf(log_file, "[%s] %s\n", timestamp, message);
+		fprintf(log_file, "[%s] %s\n", timestamp, message);
 	}
 } 
 
@@ -463,7 +473,7 @@ void inputScore(int score) //This seriously needs to be cleaned up
 		//highScoreName = "";
 		for(y=0;y<20;y++)
 		{
-			highScoreName[y] = NULL;
+			highScoreName[y] = '\0';
 		}
 		
 		x++;
@@ -985,26 +995,30 @@ int mainMenu(void)
 int main() //Need to fix this up
 {
 
-	welcomeArt();
+	s_initialize();
+
+	// welcomeArt();
 	
-	do
-	{	
-		switch(mainMenu())
-		{
-			case 0:
-				loadGame();
-				break;
-			case 1:
-				displayHighScores();
-				break;	
-			case 2:
-				controls();
-				break;		
-			case 3:
-				exitYN(); 
-				break;			
-		}		
-	} while(1);	//
+	// do
+	// {	
+	// 	switch(mainMenu())
+	// 	{
+	// 		case 0:
+	// 			loadGame();
+	// 			break;
+	// 		case 1:
+	// 			displayHighScores();
+	// 			break;	
+	// 		case 2:
+	// 			controls();
+	// 			break;		
+	// 		case 3:
+	// 			exitYN(); 
+	// 			break;			
+	// 	}		
+	// } while(1);	//
+
+	s_dispose();
 	
 	return(0);
 }
