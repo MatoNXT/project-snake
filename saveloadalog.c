@@ -10,6 +10,35 @@
 FILE* log_file;
 FILE* player_stats;
 
+void printxy(int x, int y, const char *s)
+{
+  COORD coord = { x, y};
+  SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+  printf("%s",s);
+}
+
+char waitForAnyKey(void)
+{
+	int pressed;
+	
+	while(!kbhit());
+	
+	pressed = getch();
+	//pressed = tolower(pressed);
+	return((char)pressed);
+}
+
+void s_clear()
+{
+	int x;
+	printxy(1,1,"********************************************************************************");
+	for(x = 2; x<=19; x++)
+	{
+		printxy(1,x,"*                                                                              *");//80
+	}
+	printxy(1,20,"********************************************************************************");//80
+}
+
 typedef struct
 {
 	int round[3];
@@ -64,10 +93,20 @@ void s_log(char message)
 	}
 } 
 
+void s_profiles()
+{
+	int i;
+	s_clear();
+	// gotoxy
+	// printf("Select slot:")
+	
+}
+
 int main()
 {
 	s_initialize();
 	s_load();
+	s_clear();
 	memcpy(players[0].name, "Name", 4);
 	memcpy(players[0].surname, "Surname", 7);
 	players[0].id = 1;
@@ -77,5 +116,6 @@ int main()
 	memcpy(players[1].surname, "Surname1", 8);
 	s_save();
 	s_dispose();
+	waitForAnyKey();  
 	return 0;
 }

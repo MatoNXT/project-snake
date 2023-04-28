@@ -31,10 +31,11 @@ Although this program may compile/ run in Cygwin it runs slowly.
 #define SNAKE_ARRAY_SIZE 310
 
 FILE* log_file;
+FILE* player_stats;
 
 typedef struct
 {
-	int round[10];
+	int round[3];
 	int total;
 }SCORE;
 
@@ -43,27 +44,36 @@ typedef struct
 	char name[20];
 	char surname[20];
 	int id;
-	SCORE;
+	SCORE score;
 } STATS;
+STATS players[6];
 
 void s_initialize()
 {
 	log_file = fopen("mylog.txt", "a");
+	player_stats = fopen("playerstats.txt","w");
 }
 
 void s_dispose()
 {
 	fclose(log_file);
+	fclose(player_stats);
 }
 
-void s_save()
+int s_save()
 {
-
+	if (player_stats == NULL) 
+	{
+        printf("Error opening file\n");
+        return (1);
+    }
+	fwrite(&players, sizeof(STATS), 6, player_stats);
 }
 
 void s_load()
 {
-
+    fread(&players, sizeof(STATS), 6, player_stats);
+    
 }
 
 void s_log(char message)
@@ -996,27 +1006,27 @@ int main() //Need to fix this up
 {
 
 	s_initialize();
-
-	// welcomeArt();
+	s_load();
+	welcomeArt();
 	
-	// do
-	// {	
-	// 	switch(mainMenu())
-	// 	{
-	// 		case 0:
-	// 			loadGame();
-	// 			break;
-	// 		case 1:
-	// 			displayHighScores();
-	// 			break;	
-	// 		case 2:
-	// 			controls();
-	// 			break;		
-	// 		case 3:
-	// 			exitYN(); 
-	// 			break;			
-	// 	}		
-	// } while(1);	//
+	 do
+	 {	
+	 	switch(mainMenu())
+	 	{
+	 		case 0:
+ 			loadGame();
+			break;
+			case 1:
+	 		displayHighScores();
+	 		break;	
+	 		case 2:
+ 			controls();
+			break;		
+	 		case 3:
+	 		exitYN(); 
+			break;			
+ 		}		
+	 } while(1);	//
 
 	s_dispose();
 	
