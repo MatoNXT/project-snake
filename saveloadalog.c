@@ -47,6 +47,7 @@ typedef struct
 
 typedef struct 
 {
+	int empty;
 	char name[20];
 	char surname[20];
 	int id;
@@ -96,24 +97,45 @@ void s_log(char message)
 void s_profiles()
 {
 	int i;
+	char tmp_str[50];
 	s_clear();
-	// gotoxy
-	// printf("Select slot:")
-	
+	printxy(34,4,"Select profile:");
+	printxy(15,5,"ID  Name                 Surname              Score");
+	for(i = 0; i <=5; i++)
+	{
+		if(players[i].empty == 0)
+		{
+			printxy(19,6+i,"EMPTY");
+		}
+		else
+		{
+			sprintf(tmp_str,"%-3d %-20s %-20s %-5d",players[i].id, players[i].name, players[i].surname, players[i].score);
+			printxy(15,6+i,tmp_str);
+		}
+	}
 }
 
 int main()
 {
 	s_initialize();
 	s_load();
-	s_clear();
+
+
 	memcpy(players[0].name, "Name", 4);
 	memcpy(players[0].surname, "Surname", 7);
 	players[0].id = 1;
+	players[0].empty=1;
 	players[0].score.round[0] = 2;
 	players[0].score.total = 3;
 	memcpy(players[1].name, "Name1", 5);
 	memcpy(players[1].surname, "Surname1", 8);
+	players[1].id = 2;
+	players[1].empty=1;
+	players[1].score.round[0] = 4;
+	players[1].score.total = 6;
+
+	s_profiles();
+
 	s_save();
 	s_dispose();
 	waitForAnyKey();  
