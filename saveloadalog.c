@@ -7,8 +7,18 @@
 #include <conio.h>
 #include <windows.h> 
 
+#define UP_ARROW 72
+#define LEFT_ARROW 75
+#define RIGHT_ARROW 77
+#define DOWN_ARROW 80
+#define ENTER_KEY 13
+#define EXIT_BUTTON 27 //ESC
+#define PAUSE_BUTTON 112 //P
+
 FILE* log_file;
 FILE* player_stats;
+
+int current_player;
 
 void printxy(int x, int y, const char *s)
 {
@@ -94,7 +104,7 @@ void s_log(char message)
 	}
 } 
 
-void s_profiles()
+void s_show_profiles()
 {
 	int i;
 	char tmp_str[50];
@@ -113,14 +123,101 @@ void s_profiles()
 			printxy(15,6+i,tmp_str);
 		}
 	}
+	
+	//printxy(17,13,"(You can select from profiles by pressing 1-6)");
+	waitForAnyKey();
+	return;
+}
+
+int s_menu_selection(int x, int y)
+{
+	int pressed;
+	
+	while(1)
+	{
+		if(kbhit())
+		{
+			pressed=getch();
+			if (pressed == 27)
+			{
+				s_clear();
+				pressed = 0;
+				break;
+			}
+			if(pressed >= x+48 && pressed <= y+48)
+			{
+				pressed = pressed-48;
+				break;
+			}
+		}
+	}
+	return pressed;
+}
+
+int s_main_menu(void)
+{
+	int selected;
+	char *t;
+	
+	s_clear();
+	printxy(10,5,"1. New Game");
+	printxy(10,6,"2. High Scores");
+	printxy(10,7,"3. Select Profile");
+	printxy(10,9,"0. Exit");
+	selected = s_menu_selection(0, 3);
+	return(selected);
+}
+
+void s_select_profile()
+{
+	int selection = 0;
+
+	s_show_profiles();
+    
+	selection = s_menu_selection(0,5);
+
+	switch(selection)
+	{
+		case 1:
+			break;
+		case 2:
+			break;		
+		case 0:
+			break;			
+	}	
+}
+
+void s_load_game()
+{
+
+}
+
+void s_exit(void)
+{
+	char pressed;
+
+	printxy(10,5,"Are you sure you want to exit(Y/N)");
+	
+	do
+	{
+		pressed = waitForAnyKey();
+		pressed = tolower(pressed);
+	} while (!(pressed == 'y' || pressed == 'n'));
+	
+	if (pressed == 'y')
+	{
+		s_save();
+		s_dispose();
+		s_clear(); //clear the console
+		exit(0);
+	}
+	return;
 }
 
 int main()
 {
 	s_initialize();
 	s_load();
-
-
 	memcpy(players[0].name, "Name", 4);
 	memcpy(players[0].surname, "Surname", 7);
 	players[0].id = 1;
@@ -133,11 +230,26 @@ int main()
 	players[1].empty=1;
 	players[1].score.round[0] = 4;
 	players[1].score.total = 6;
+      
+	do
+	{	
+		switch(s_main_menu())
+		{
+			case 1:
+				s_load_game();
+				break;
+			case 2:
+				s_show_profiles();
+				break;		
+			case 3:
+				s_select_profile();
+				break;		
+			case 0:
+				s_exit(); 
+				break;			
+		}		
+	} while(1);
 
-	s_profiles();
-
-	s_save();
-	s_dispose();
 	waitForAnyKey();  
 	return 0;
 }
