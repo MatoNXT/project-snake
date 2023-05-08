@@ -35,6 +35,21 @@ FILE* log_file;
 FILE* player_stats;
 int current_player;
 
+void s_bubble_sort(char names[MAX_NAMES][MAX_NAME_LENGTH], int n) {
+    int i, j;
+    char temp[MAX_NAME_LENGTH];
+
+    for (i = 0; i < n-1; i++) {
+        for (j = 0; j < n-i-1; j++) {
+            if (strcmp(player[j].name, player[j+1].name) > 0) {
+                strcpy(temp, player[j].name);
+                strcpy(player[j].name, player[j+1].name);
+                strcpy(player[j+1].name, temp);
+            }
+        }
+    }
+}
+
 void printxy(int x, int y, const char *s)
 {
   COORD coord = { x, y};
