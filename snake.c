@@ -35,7 +35,7 @@ FILE* log_file;
 FILE* player_stats;
 int current_player;
 
-void s_bubble_sort(char names[MAX_NAMES][MAX_NAME_LENGTH], int n) {
+void s_bubble_sort_name(char names[MAX_NAMES][MAX_NAME_LENGTH], int n) {
     int i, j;
     char temp[MAX_NAME_LENGTH];
 
