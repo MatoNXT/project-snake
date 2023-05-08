@@ -1,3 +1,7 @@
+//
+// 
+//
+//
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
@@ -14,6 +18,12 @@
 #define ENTER_KEY 13
 #define EXIT_BUTTON 27 //ESC
 #define PAUSE_BUTTON 112 //P
+#define _PLAYERS 6
+#define SC_WALL (char)219
+#define SC_UP_CORNER (char)223
+#define SC_DOWN_CORNER (char)220
+#define SC_LINE (char)196
+#define SC_SPACE (char)32
 
 struct SCORE
 {
@@ -30,26 +40,40 @@ struct STATS
 	struct SCORE score;
 };
 
-struct STATS players[6];
+struct STATS players[_PLAYERS];
+int ndx[_PLAYERS];
 FILE* log_file;
 FILE* player_stats;
 int current_player;
 
-void s_bubble_sort_name(char names[MAX_NAMES][MAX_NAME_LENGTH], int n) {
-    int i, j;
-    char temp[MAX_NAME_LENGTH];
-
-    for (i = 0; i < n-1; i++) {
-        for (j = 0; j < n-i-1; j++) {
-            if (strcmp(player[j].name, player[j+1].name) > 0) {
-                strcpy(temp, player[j].name);
-                strcpy(player[j].name, player[j+1].name);
-                strcpy(player[j+1].name, temp);
-            }
-        }
+char *to_lower(const char *str)
+{
+    size_t len = strlen(str);
+    char *lower_str = malloc(len + 1);
+    if (lower_str == NULL)
+	{
+        fprintf(stderr, "Error: memory allocation in to_lower failed\n");
+        return NULL;
     }
+    for (size_t i = 0; i < len; i++)
+	{
+        lower_str[i] = tolower(str[i]);
+    }
+    lower_str[len] = '\0';
+    return lower_str;
 }
-//iojoijoijoij
+
+void s_log(const char *message)
+{
+	time_t now = time(NULL);
+    char timestamp[20];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+    if (log_file != NULL)
+	{ 
+		fprintf(log_file, "[%s] %s\n", timestamp, message);
+	}
+} 
+
 void printxy(int x, int y, const char *s)
 {
   COORD coord = { x, y};
@@ -70,13 +94,27 @@ char waitForAnyKey(void)
 
 void s_clear()
 {
-	int x;
-	printxy(1,1,"********************************************************************************");
+	int x; 
+	char tmp_str[80];
+
+	//sprintf(tmp_str,"%*s",80,WALL);
+
+	memset(tmp_str,SC_UP_CORNER,80); tmp_str[0]=SC_WALL; tmp_str[79]=SC_WALL; tmp_str[80]='\0';
+	printxy(1,1,tmp_str);
+	memset(tmp_str,SC_SPACE,80); tmp_str[0]=SC_WALL; tmp_str[79]=SC_WALL;tmp_str[80]='\0';
 	for(x = 2; x<=19; x++)
 	{
-		printxy(1,x,"*                                                                              *");//80
+		printxy(1,x,tmp_str);
 	}
-	printxy(1,20,"********************************************************************************");//80
+	memset(tmp_str,SC_DOWN_CORNER,80); tmp_str[0]=SC_WALL; tmp_str[79]=SC_WALL; tmp_str[80]='\0';
+	printxy(1,20,tmp_str); 
+}
+void s_reset_ndx()
+{
+	for(int i =0; i<_PLAYERS; i++)
+	{
+		ndx[i]=i;
+	}	
 }
 
 void s_initialize()
@@ -87,6 +125,8 @@ void s_initialize()
 	{
 		player_stats = fopen("playerstats.dat","wb");
 	}
+    s_reset_ndx();
+	s_log("********************************************************************************");
 }
 
 void s_dispose()
@@ -102,15 +142,15 @@ int s_save()
         printf("Error opening file\n");
         return (1);
     }
-	//fwrite(&players, sizeof(struct STATS), 6, player_stats);
+	//fwrite(&players, sizeof(struct STATS), PLAYERS, player_stats);
 	fseek(player_stats,0,SEEK_SET);
-	fwrite(players, sizeof(struct STATS), 6, player_stats);
+	fwrite(players, sizeof(struct STATS), _PLAYERS, player_stats);
 }
 
 
 void s_load()
 {
-    fread(players, sizeof(struct STATS), 6, player_stats);
+    fread(players, sizeof(struct STATS), _PLAYERS, player_stats);
 	for(int i =0; i <= 5; i++)
 	{
 		players[i].id = i + 1;
@@ -118,39 +158,32 @@ void s_load()
     
 }
 
-void s_log(char message)
-{
-	time_t now = time(NULL);
-    char timestamp[20];
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
-    if (log_file != NULL)
-	{ 
-		fprintf(log_file, "[%s] %s\n", timestamp, message);
-	}
-} 
-
 void s_show_profiles(char *title)
 {
 	int i;
-	char tmp_str[50];
+	char tmp_str[80];
 	s_clear();
 	printxy(34,3,title);
-	printxy(15,5,"ID  Name                 Surname              Score");
-	for(i = 0; i <=5; i++)
+	printxy(8,4,"                                              Total  Round         ");
+	printxy(8,5,"ID  Name                 Surname              Score  1     2     3 ");
+	memset(tmp_str,SC_LINE,66); tmp_str[66]='\0';
+	printxy(8,6,tmp_str);
+	for(i = 0; i<_PLAYERS; i++)
 	{
-		if(players[i].empty == 0)
+		if(players[ndx[i]].empty == 0)
 		{
-			sprintf(tmp_str,"%-3d %-20s",players[i].id, "EMPTY");
+			sprintf(tmp_str,"%-3d %-20s",players[ndx[i]].id, "EMPTY");
 		}
 		else
 		{
-			sprintf(tmp_str,"%-3d %-20s %-20s %-5d",players[i].id, players[i].name, players[i].surname, players[i].score.total);
+			sprintf(tmp_str,"%-3d %-20s %-20s %-5d  %-5d %-5d %-5d",players[ndx[i]].id, players[ndx[i]].name, players[ndx[i]].surname, players[ndx[i]].score.total, players[ndx[i]].score.round[0], players[ndx[i]].score.round[1], players[ndx[i]].score.round[2]);
 		}
-		printxy(15,6+i,tmp_str);
+		printxy(8,7+i,tmp_str);
+		s_log(tmp_str);
 	}
 	
 	//printxy(17,13,"(You can select from profiles by pressing 1-6)");
-	waitForAnyKey();
+	//waitForAnyKey();
 	return;
 }
 
@@ -169,7 +202,7 @@ int s_menu_selection(int x, int y)
 				pressed = 0;
 				break;
 			}
-			if(pressed >= x+48 && pressed <= y+48)
+			if (pressed >= x+48 && pressed <= y+48)
 			{
 				pressed = pressed-48;
 				break;
@@ -177,6 +210,103 @@ int s_menu_selection(int x, int y)
 		}
 	}
 	return pressed;
+}
+
+void s_sort(int attr)
+{
+	int change = 1;
+	int tmp;
+
+	s_reset_ndx();
+	if (attr == 1) // sort by Surnmae
+	{
+		while(change)
+		{
+			change = 0;
+			for (int i=0; i < _PLAYERS-1; i++)
+			{
+				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				{
+					if (strcmp(to_lower(players[ndx[i]].surname),to_lower(players[ndx[i+1]].surname))>0)
+					{
+							tmp = ndx[i];
+							ndx[i] = ndx[i+1];
+							ndx[i+1] = tmp;
+							change = 1;
+					}
+				}
+			}
+		}
+	}
+	else if (attr == 2)  // Sort by Name
+	{
+		while(change)
+		{
+			change = 0;
+			for (int i=0; i < _PLAYERS-1; i++)
+			{
+				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				{
+					if (strcmp(to_lower(players[ndx[i]].name),to_lower(players[ndx[i+1]].name))>0)
+					{
+							tmp = ndx[i];
+							ndx[i] = ndx[i+1];
+							ndx[i+1] = tmp;
+							change = 1;
+					}
+				}
+			}
+		}
+	}
+	else if (attr == 3) // Sort by ID
+	{
+		s_reset_ndx();
+	}
+	else if (attr >= 41 && attr <=43) // Sort by Roud
+	{
+		int x = attr-41;
+		while(change)
+		{
+			change = 0;
+			for (int i=0; i < _PLAYERS-1; i++)
+			{
+				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				{
+					if (players[ndx[i]].score.round[x] > players[ndx[i+1]].score.round[x])
+					{
+							tmp = ndx[i];
+							ndx[i] = ndx[i+1];
+							ndx[i+1] = tmp;
+							change = 1;
+					}
+				}
+			}
+		}
+	}
+	else if (attr == 5) // Sort by Total Score
+	{
+		while(change)
+		{
+			change = 0;
+			for (int i=0; i < _PLAYERS-1; i++)
+			{
+				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				{
+					if (players[ndx[i]].score.total > players[ndx[i+1]].score.total)
+					{
+							tmp = ndx[i];
+							ndx[i] = ndx[i+1];
+							ndx[i+1] = tmp;
+							change = 1;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		s_reset_ndx();
+	}
 }
 
 int s_main_menu(void)
@@ -191,7 +321,7 @@ int s_main_menu(void)
 	printxy(10,9,"0. Exit");
 	selected = s_menu_selection(0, 3);
 	return(selected);
-}
+} 
 
 int s_enter_player(int p_id)
 {
@@ -218,10 +348,43 @@ void s_select_profile()
 
 	s_show_profiles("Select profile:");
     
-	selection = s_menu_selection(1,6);
+	selection = s_menu_selection(0,_PLAYERS);
 	if(selection != 0)
 	{
 		s_enter_player(selection-1);
+	}
+}
+
+int s_sort_round()
+{
+	int round = 1;
+	printxy(6,17,"Sort by round number [1-3]:");
+	round = s_menu_selection(1,3)+40;
+	return round;
+}
+
+void s_show_leaderboard()
+{
+	int selection = 0;
+	while (1)
+	{
+		s_show_profiles("Leaderboard");
+		printxy(6,15,"Sort by:");
+		printxy(6,16,"1. Surname   2. Name      3. ID        4. Round     5. Total score");
+		printxy(6,17,"0. Back                                                           ");
+		selection = s_menu_selection(0,5);
+		if (selection !=0 )
+		{
+			if (selection == 4 )
+			{
+				selection == s_sort_round();
+			}
+			s_sort(selection);
+		} 
+		else
+		{
+			break;
+		}
 	}
 }
 
@@ -313,23 +476,10 @@ void s_exit(void)
 }
 
 int main()
-{
-	//waitForAnyKey();  
+{ 
 	s_initialize();
 	s_load();
-	// memcpy(players[0].name, "Name", 4);
-	// memcpy(players[0].surname, "Surname", 7);
-	// players[0].id = 1;
-	// players[0].empty=1;
-	// players[0].score.round[0] = 2;
-	// players[0].score.total = 3;
-	// memcpy(players[1].name, "Name1", 5);
-	// memcpy(players[1].surname, "Surname1", 8);
-	// players[1].id = 2;
-	// players[1].empty=1;
-	// players[1].score.round[0] = 4;
-	// players[1].score.total = 6;
-      
+	//waitForAnyKey(); 
 	do
 	{	
 		switch(s_main_menu())
@@ -338,7 +488,7 @@ int main()
 				//s_load_game();
 				break;
 			case 2:
-				s_show_profiles("Leaderboard");
+				s_show_leaderboard();
 				break;		
 			case 3:
 				s_select_profile();
@@ -348,7 +498,6 @@ int main()
 				break;			
 		}		
 	} while(1);
-
-	waitForAnyKey();  
+	//waitForAnyKey();  
 	return 0;
 }
