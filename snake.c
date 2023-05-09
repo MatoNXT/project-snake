@@ -2,10 +2,10 @@
 // 
 //
 //  TODO:
+// 	- fix sort when empty very sus 
 //  - colors
 //  - supress new lines while entering name/surname
-//  - kill buffered keypressed
-//
+//  - kill buffered keypressed.
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
