@@ -1,6 +1,10 @@
 //
 // 
 //
+//  TODO:
+//  - colors
+//  - supress new lines while entering name/surname
+//  - kill buffered keypressed
 //
 #include <stdio.h>
 #include <time.h>
@@ -34,6 +38,7 @@ struct SCORE
 struct STATS
 {
 	int empty;
+	int current;
 	char name[20];
 	char surname[20];
 	int id;
@@ -44,7 +49,7 @@ struct STATS players[_PLAYERS];
 int ndx[_PLAYERS];
 FILE* log_file;
 FILE* player_stats;
-int current_player;
+int current_player = -1;
 
 char *to_lower(const char *str)
 {
@@ -127,6 +132,7 @@ void s_initialize()
 	}
     s_reset_ndx();
 	s_log("********************************************************************************");
+	current_player=-1;
 }
 
 void s_dispose()
@@ -147,6 +153,19 @@ int s_save()
 	fwrite(players, sizeof(struct STATS), _PLAYERS, player_stats);
 }
 
+ void s_show_current_profile()
+ {
+	char tmp_str[80];
+	if(current_player != -1)
+	{
+		sprintf(tmp_str,"Profile: %s %s                                ", players[current_player].name, players[current_player].surname);
+	}
+	else
+	{
+		sprintf(tmp_str,"Profile:                                                                       ");
+	}
+	printxy(2,21,tmp_str);
+ }
 
 void s_load()
 {
@@ -154,6 +173,10 @@ void s_load()
 	for(int i =0; i <= 5; i++)
 	{
 		players[i].id = i + 1;
+		if (players[i].current == 1)
+		{
+			current_player = i;
+		}
 	}
     
 }
@@ -181,7 +204,7 @@ void s_show_profiles(char *title)
 		printxy(8,7+i,tmp_str);
 		s_log(tmp_str);
 	}
-	
+	s_show_current_profile();
 	//printxy(17,13,"(You can select from profiles by pressing 1-6)");
 	//waitForAnyKey();
 	return;
@@ -319,6 +342,7 @@ int s_main_menu(void)
 	printxy(10,6,"2. High Scores");
 	printxy(10,7,"3. Select Profile");
 	printxy(10,9,"0. Exit");
+	s_show_current_profile();
 	selected = s_menu_selection(0, 3);
 	return(selected);
 } 
@@ -328,9 +352,10 @@ int s_enter_player(int p_id)
 	char tmp_str[10];
 	sprintf(tmp_str,"ID: %-3d", p_id+1);
 	printxy(15,14,tmp_str);
-	printxy(15,15,"Name:");
+	printxy(15,16,"Surname: ");
+	printxy(15,15,"Name: ");
 	scanf("%s", players[p_id].name);
-	printxy(15,16,"Surname:");
+	printxy(15,16,"Surname: ");
 	scanf("%s", players[p_id].surname);
 	players[p_id].id = p_id+1;
 	players[p_id].empty = 1;
@@ -345,13 +370,36 @@ int s_enter_player(int p_id)
 void s_select_profile()
 {
 	int selection = 0;
+	char pressed;
 
 	s_show_profiles("Select profile:");
     
 	selection = s_menu_selection(0,_PLAYERS);
 	if(selection != 0)
 	{
-		s_enter_player(selection-1);
+		// check if selected profile is empty
+		if (players[selection-1].empty == 0)
+		{
+			s_enter_player(selection-1);
+		}
+		else // if profile is not empty ask if profile will be overwritten
+		{
+			printxy(6,15,"Overwrite existing profile? [Y/N]");
+			do
+			{
+				pressed = waitForAnyKey();
+				pressed = tolower(pressed);
+			} while (!(pressed == 'y' || pressed == 'n'));
+			printxy(6,15,"                                 ");
+			if (pressed == 'y')
+			{
+				s_enter_player(selection-1);
+			}
+		}
+		players[current_player].current = 0;
+		current_player=selection-1;       // selet selected profile as current profile
+		players[selection-1].current = 1; // set 'current' flag on selected player
+		s_show_current_profile();         // show profile
 	}
 }
 
@@ -372,6 +420,7 @@ void s_show_leaderboard()
 		printxy(6,15,"Sort by:");
 		printxy(6,16,"1. Surname   2. Name      3. ID        4. Round     5. Total score");
 		printxy(6,17,"0. Back                                                           ");
+		s_show_current_profile();
 		selection = s_menu_selection(0,5);
 		if (selection !=0 )
 		{
