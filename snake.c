@@ -338,7 +338,9 @@ int s_main_menu(void)
 	char *t;
 	
 	s_clear();
-	printxy(10,5,"1. New Game");
+	//printxy(0,0,"Pixel united");
+	printxy(36,4,"SNAKE");
+	printxy(10,5,"1. Start game");
 	printxy(10,6,"2. High Scores");
 	printxy(10,7,"3. Select Profile");
 	printxy(10,9,"0. Exit");
