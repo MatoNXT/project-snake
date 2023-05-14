@@ -737,7 +737,7 @@ int s_exit(void)
 {
     char pressed;
 
-    s_screen_printxy(10,15,"Are you sure you want to exit(Y/N)",S_SCR_COL_MONOCHROME);
+    s_screen_printxy(23,15,"Are you sure you want to exit(Y/N)",S_SCR_COL_MONOCHROME);
     s_screen_buffer_flush();
     
     do
