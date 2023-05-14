@@ -61,7 +61,6 @@
 #define BG_YELLOW        224
 #define BG_BRIGHT_WHITE  240
 
-
 #define KB_UP_ARROW 72
 #define KB_LEFT_ARROW 75
 #define KB_RIGHT_ARROW 77
