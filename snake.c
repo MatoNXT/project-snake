@@ -98,19 +98,19 @@ struct SCORE
 
 struct STATS
 {
+	int id;
 	int empty;
 	int current;
-	char name[20];
-	char surname[20];
-	int id;
-	struct SCORE score;
+	char name[21];
+	char surname[21];
+    struct SCORE score;
 };
 
 struct SCREEN screen;
 struct STATS players[S_PLAYERS];
 int ndx[S_PLAYERS];
-FILE* log_file;
-FILE* player_stats;
+FILE* f_log_file;
+FILE* f_player_stats;
 int current_player = -1;
 
 char *to_lower(const char *str)
@@ -135,9 +135,9 @@ void s_log(const char *message)
 	time_t now = time(NULL);
     char timestamp[20];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
-    if (log_file != NULL)
+    if (f_log_file != NULL)
 	{ 
-		fprintf(log_file, "[%s] %s\n", timestamp, message);
+		fprintf(f_log_file, "[%s] %s\n", timestamp, message);
 	}
 } 
 
@@ -261,25 +261,97 @@ void s_screen_show_cursor()
    SetConsoleCursorInfo(screen.h_active, &info);
 }
 
+int s_save()
+{
+	f_player_stats = fopen("playerstats.dat","wb");
+	if(f_player_stats != NULL) 
+	{
+		//fwrite(&players, sizeof(struct STATS), PLAYERS, player_stats);
+		fseek(f_player_stats,0,SEEK_SET);
+		fwrite(players, sizeof(struct STATS), S_PLAYERS, f_player_stats);
+		fclose(f_player_stats);
+	}
+	else
+	{
+        printf("Error opening file\n");
+        return (1);
+	}
+}
+
+void s_load()
+{
+	f_player_stats = fopen("playerstats.dat","rb+");
+	if(f_player_stats != NULL)
+	{
+		fread(players, sizeof(struct STATS), S_PLAYERS, f_player_stats);
+		fclose(f_player_stats);
+		for(int i =0; i < S_PLAYERS; i++)
+		{
+			players[i].id = i + 1;
+			if (players[i].current == 1)
+			{
+				current_player = i;
+			}
+			if ( players[i].empty )  // fill empty profile with '~' so sorting will place it to the end
+			{
+				strcpy(players[i].name,"~~~~~~~~~~~~~~~~~~~~");
+				strcpy(players[i].surname,"~~~~~~~~~~~~~~~~~~~~");
+			}
+		}
+	} 
+}
+
 void s_initialize()
 {
-	log_file = fopen("mylog.txt", "a");
-	player_stats = fopen("playerstats.dat","rb+");
-	if(player_stats == NULL)
-	{
-		player_stats = fopen("playerstats.dat","wb");
-	}
-    s_reset_ndx();
-	s_log("********************************************************************************");
+	// initialize player profiles
 	current_player=-1;
+	for(int i =0; i < S_PLAYERS; i++)
+	{
+		players[i].id = i + 1;
+		players[i].empty=1;
+		strcpy(players[i].name,"~~~~~~~~~~~~~~~~~~~~");
+		strcpy(players[i].surname,"~~~~~~~~~~~~~~~~~~~~");
+		players[i].current=0;
+		players[i].score.total=0;
+		for(int r=0; r<3; r++)
+		{
+			players[i].score.round[r]=0;
+		}
+	} 
+	// open log files
+	f_log_file = fopen("mylog.txt", "a");//
+	// check if data file exists
+	f_player_stats = fopen("playerstats.dat","rb+");
+	if(f_player_stats == NULL)
+	{ // data file does not exists so generate new one
+		f_player_stats = fopen("playerstats.dat","wb");
+		if(f_player_stats != NULL) 
+		{
+			s_save();
+			fclose(f_player_stats);
+		}
+		else
+		{
+			printf("Unable to create data file.");
+			exit(1);
+		}
+	}
+	else
+	{  // data file exist so close it for now
+		fclose(f_player_stats);
+	}
+	// reset sorting index
+    s_reset_ndx();
+	// mark new start in log file
+	s_log("********************************************************************************");
+	// initialize screen
 	s_screen_init();
 	s_screen_hide_cursor();
 }
 
 void s_close()
 {
-	fclose(log_file);
-	fclose(player_stats);
+	fclose(f_log_file);
 	// Restore the original active screen buffer.
 	s_screen_show_cursor();
     if (! SetConsoleActiveScreenBuffer(screen.h_stdout))
@@ -289,53 +361,21 @@ void s_close()
     }	
 }
 
-int s_save()
+void s_show_current_profile()
 {
-	if (player_stats == NULL) 
-	{
-        printf("Error opening file\n");
-        return (1);
-    }
-	//fwrite(&players, sizeof(struct STATS), PLAYERS, player_stats);
-	fseek(player_stats,0,SEEK_SET);
-	fwrite(players, sizeof(struct STATS), S_PLAYERS, player_stats);
-}
-
- void s_show_current_profile()
- {
 	char tmp_str[80];
+	sprintf(tmp_str,"Profile:                                                                       ");
 	if(current_player != -1)
 	{
-		if (players[current_player].empty!=0)
+		if ( !players[current_player].empty )
 		{
 			sprintf(tmp_str,"Profile: %s %s                                ", players[current_player].name, players[current_player].surname);
-		}
-		else
-		{
-			sprintf(tmp_str,"Profile:                                                                       ");
 		}
  	}
 	s_screen_printxy(2,21,tmp_str,S_SCR_COL_MONOCHROME);
 	s_screen_buffer_flush();
- }
-
-void s_load()
-{
-    fread(players, sizeof(struct STATS), S_PLAYERS, player_stats);
-	for(int i =0; i < S_PLAYERS; i++)
-	{
-		players[i].id = i + 1;
-		if (players[i].current == 1)
-		{
-			current_player = i;
-		}
-		if (players[i].empty == 0)  // fill empty profile with '~' so sorting will place it to the end
-		{
-			sprintf(players[i].name,"~~~~~~~~~~~~~~~~~~~~");
-			sprintf(players[i].surname,"~~~~~~~~~~~~~~~~~~~~");
-		}
-	}  
 }
+
 
 void s_show_profiles(char *title)
 {
@@ -349,14 +389,6 @@ void s_show_profiles(char *title)
 	s_screen_printxy(8,6,tmp_str,S_SCR_COL_MONOCHROME);
 	for(i = 0; i<S_PLAYERS; i++)
 	{
-		// if(players[ndx[i]].empty == 0)
-		// {
-		// 	sprintf(tmp_str,"%-3d %-20s",players[ndx[i]].id, "~~~~~~~~~~~~~~~~~~~~");
-		// }
-		// else
-		// {
-		// 	sprintf(tmp_str,"%-3d %-20s %-20s %-5d  %-5d %-5d %-5d",players[ndx[i]].id, players[ndx[i]].name, players[ndx[i]].surname, players[ndx[i]].score.total, players[ndx[i]].score.round[0], players[ndx[i]].score.round[1], players[ndx[i]].score.round[2]);
-		// }
 		sprintf(tmp_str,"%-3d %-20s %-20s %-5d  %-5d %-5d %-5d",players[ndx[i]].id, players[ndx[i]].name, players[ndx[i]].surname, players[ndx[i]].score.total, players[ndx[i]].score.round[0], players[ndx[i]].score.round[1], players[ndx[i]].score.round[2]);
 		s_screen_printxy(8,7+i,tmp_str,S_SCR_COL_MONOCHROME);
 		s_log(tmp_str);
@@ -423,15 +455,12 @@ void s_sort(int attr)
 			change = 0;
 			for (int i=0; i < S_PLAYERS-1; i++)
 			{
-				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				if (strcmp(to_lower(players[ndx[i]].name),to_lower(players[ndx[i+1]].name))>0)
 				{
-					if (strcmp(to_lower(players[ndx[i]].name),to_lower(players[ndx[i+1]].name))>0)
-					{
-							tmp = ndx[i];
-							ndx[i] = ndx[i+1];
-							ndx[i+1] = tmp;
-							change = 1;
-					}
+						tmp = ndx[i];
+						ndx[i] = ndx[i+1];
+						ndx[i+1] = tmp;
+						change = 1;
 				}
 			}
 		}
@@ -448,15 +477,12 @@ void s_sort(int attr)
 			change = 0;
 			for (int i=0; i < S_PLAYERS-1; i++)
 			{
-				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				if (players[ndx[i]].score.round[x] > players[ndx[i+1]].score.round[x])
 				{
-					if (players[ndx[i]].score.round[x] > players[ndx[i+1]].score.round[x])
-					{
-							tmp = ndx[i];
-							ndx[i] = ndx[i+1];
-							ndx[i+1] = tmp;
-							change = 1;
-					}
+						tmp = ndx[i];
+						ndx[i] = ndx[i+1];
+						ndx[i+1] = tmp;
+						change = 1;
 				}
 			}
 		}
@@ -468,15 +494,12 @@ void s_sort(int attr)
 			change = 0;
 			for (int i=0; i < S_PLAYERS-1; i++)
 			{
-				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				if (players[ndx[i]].score.total > players[ndx[i+1]].score.total)
 				{
-					if (players[ndx[i]].score.total > players[ndx[i+1]].score.total)
-					{
-							tmp = ndx[i];
-							ndx[i] = ndx[i+1];
-							ndx[i+1] = tmp;
-							change = 1;
-					}
+						tmp = ndx[i];
+						ndx[i] = ndx[i+1];
+						ndx[i+1] = tmp;
+						change = 1;
 				}
 			}
 		}
@@ -511,25 +534,38 @@ int s_enter_player(int p_id)
 	sprintf(tmp_str,"ID: %-3d", p_id+1);
 	s_screen_printxy(15,14,tmp_str,S_SCR_COL_MONOCHROME);
 	s_screen_printxy(15,16,"Surname: ",S_SCR_COL_MONOCHROME);
-	s_screen_printxy(15,15,"Name: ",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(15,15,"Name:    ",S_SCR_COL_MONOCHROME);
 	s_screen_buffer_flush();
-	SetConsoleCursorPosition(screen.h_active, (COORD){24,14});
+	
+	// enter new player name 
+	SetConsoleCursorPosition(screen.h_active, (COORD){23,14});
 	s_screen_show_cursor();
-	scanf(" %s", players[p_id].name);                          // leading sero in formatter supress spaces and new lines
-	s_screen_hide_cursor();
-	s_screen_printxy(15,16,"Surname: ",S_SCR_COL_MONOCHROME);
-	s_screen_buffer_flush();
-	SetConsoleCursorPosition(screen.h_active, (COORD){24,15});
+	scanf(" %s", players[p_id].name);                           // leading sero in formatter supress spaces and new lines
+	sprintf(tmp_str,"Name:    %-20s", players[p_id].name);      // print entered name
+	s_screen_printxy(15,15,tmp_str,S_SCR_COL_MONOCHROME);       // print Name to screen buffer
+	s_screen_hide_cursor();                                     
+	s_screen_buffer_flush();                                    // display screen buffer
+
+	// enter new player surname
+	SetConsoleCursorPosition(screen.h_active, (COORD){23,15});
 	s_screen_show_cursor();
-	scanf(" %s", players[p_id].surname);                       // leading sero in formatter supress spaces and new lines
-	s_screen_hide_cursor();
+	scanf(" %s", players[p_id].surname);                        // leading sero in formatter supress spaces and new lines
+	sprintf(tmp_str,"Surname: %-20s", players[p_id].surname);   // print entered surname
+	s_screen_printxy(15,16,tmp_str,S_SCR_COL_MONOCHROME);       // print Name to screen buffer
+	s_screen_hide_cursor();                                     
+	s_screen_buffer_flush();                                    // display screen buffer
+
 	players[p_id].id = p_id+1;
-	players[p_id].empty = 1;
+	players[p_id].empty = 0;
 	players[p_id].score.total = 0;
 	for(int i =0; i <= 2; i++)
 	{
 		players[p_id].score.round[i] = 0;
 	}
+
+	s_screen_printxy(15,17,"Press any key to continue...",S_SCR_COL_MONOCHROME);
+	s_screen_buffer_flush();
+	s_wait_for_any_key();
 	return 0;
 }
 
@@ -544,7 +580,7 @@ void s_select_profile()
 	if(selection != 0)
 	{
 		// check if selected profile is empty
-		if (players[selection-1].empty == 0)
+		if (players[selection-1].empty)
 		{
 			s_enter_player(selection-1);
 		}
@@ -564,10 +600,10 @@ void s_select_profile()
 				s_enter_player(selection-1);
 			}
 		}
-		players[current_player].current = 0;
-		current_player=selection-1;       // selet selected profile as current profile
-		players[selection-1].current = 1; // set 'current' flag on selected player
-		s_show_current_profile();         // show profile
+		players[current_player].current = 0;  // unselect current pplayer profile
+		current_player=selection-1;           // set selected profile as current profile
+		players[selection-1].current = 1;     // set 'current' flag on selected player profile
+		s_show_current_profile();             // show profile
 	}
 }
 
@@ -689,7 +725,6 @@ int s_exit(void)
 	{
 		s_save();
 		s_close();
-		//s_clear(); //clear the console
 		exit(0);
 	}
 }
