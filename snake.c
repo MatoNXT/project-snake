@@ -183,7 +183,7 @@ char s_wait_for_any_key(void)
 	return((char)pressed);
 }
 
-void s_clear()
+void s_screen_clear()
 {
 	char tmp_str[80];
 
@@ -381,7 +381,7 @@ void s_show_profiles(char *title)
 {
 	int i;
 	char tmp_str[80];
-	s_clear();
+	s_screen_clear();
 	s_screen_printxy(34,3,title,S_SCR_COL_MONOCHROME);
 	s_screen_printxy(8,4,"                                              Total  Round         ",S_SCR_COL_MONOCHROME);
 	s_screen_printxy(8,5,"ID  Name                 Surname              Score  1     2     3 ",S_SCR_COL_MONOCHROME);
@@ -411,7 +411,7 @@ int s_menu_selection(int x, int y)
 			pressed=getch();
 			if (pressed == 27)
 			{
-				s_clear();
+				s_screen_clear();
 				pressed = 0;
 				break;
 			}
@@ -515,7 +515,7 @@ int s_main_menu(void)
 	int selected;
 	char *t;
 	
-	s_clear();
+	s_screen_clear();
 	//printxy(0,0,"Pixel united");
 	s_screen_printxy(36,4,"SNAKE",S_SCR_COL_MONOCHROME);
 	s_screen_printxy(10,5,"1. Start game",S_SCR_COL_MONOCHROME);
@@ -664,7 +664,7 @@ void s_show_leaderboard()
 // int s_get_game_speed(void)
 // {
 // 	int speed;
-// 	s_clear();
+// 	s_screen_clear();
 	
 // 	do
 // 	{
@@ -675,38 +675,46 @@ void s_show_leaderboard()
 // 	return(speed);
 // }
 
-// void s_load_game()
-// {
-// 	int snakeXY[2][SNAKE_ARRAY_SIZE]; //Two Dimentional Array, the first array is for the X coordinates and the second array for the Y coordinates
+void s_load_game()
+{
+	// int snakeXY[2][SNAKE_ARRAY_SIZE]; //Two Dimentional Array, the first array is for the X coordinates and the second array for the Y coordinates
 	
-// 	int snakeLength = 4; //Starting Length
+	// int snakeLength = 4; //Starting Length
 	
-// 	int direction = LEFT_ARROW; //DO NOT CHANGE THIS TO RIGHT ARROW, THE GAME WILL INSTANTLY BE OVER IF YOU DO!!! <- Unless the prepairSnakeArray function is changed to take into account the direction....
+	// int direction = LEFT_ARROW; //DO NOT CHANGE THIS TO RIGHT ARROW, THE GAME WILL INSTANTLY BE OVER IF YOU DO!!! <- Unless the prepairSnakeArray function is changed to take into account the direction....
 	
-// 	int foodXY[] = {5,5};// Stores the location of the food
+	// int foodXY[] = {5,5};// Stores the location of the food
 	
-// 	int score = 0;
-// 	//int level = 1;
+	// int score = 0;
+	//int level = 1;
 	
-// 	//Window Width * Height - at some point find a way to get the actual dimensions of the console... <- Also somethings that display dont take this dimentions into account.. need to fix this...
-// 	int consoleWidth = 80;
-// 	int consoleHeight = 25;
+	//Window Width * Height - at some point find a way to get the actual dimensions of the console... <- Also somethings that display dont take this dimentions into account.. need to fix this...
+	// int consoleWidth = 80;
+	// int consoleHeight = 25;
 	
-// 	int speed = s_get_game_speed();
+	// int speed = s_get_game_speed();
 	
-// 	//The starting location of the snake
-// 	snakeXY[0][0] = 40; 
-// 	snakeXY[1][0] = 10;
-	
-// 	loadEnviroment(consoleWidth, consoleHeight); //borders
-// 	prepairSnakeArray(snakeXY, snakeLength);
-// 	loadSnake(snakeXY, snakeLength);
-// 	s_generate_food( foodXY, consoleWidth, consoleHeight, snakeXY, snakeLength);
-// 	refreshInfoBar(score, speed); //Bottom info bar. Score, Level etc
-// 	startGame(snakeXY, foodXY, consoleWidth, consoleHeight, snakeLength, direction, score, speed);
-
-// 	return;
-// }
+	//The starting location of the snake
+	// snakeXY[0][0] = 40; 
+	// snakeXY[1][0] = 10;
+	s_screen_clear();
+	if (current_player == -1 || players[current_player].empty )
+	{
+		s_screen_printxy(6,15,"Please select player profile first...",S_SCR_COL_MONOCHROME);
+		s_screen_buffer_flush();
+		s_wait_for_any_key();
+	}
+	else
+	{
+		// loadEnviroment(consoleWidth, consoleHeight); //borders
+		// prepairSnakeArray(snakeXY, snakeLength);
+		// loadSnake(snakeXY, snakeLength);
+		// s_generate_food( foodXY, consoleWidth, consoleHeight, snakeXY, snakeLength);
+		// refreshInfoBar(score, speed); //Bottom info bar. Score, Level etc
+		// startGame(snakeXY, foodXY, consoleWidth, consoleHeight, snakeLength, direction, score, speed);
+	}
+	return;
+}
 
 int s_exit(void)
 {
@@ -739,7 +747,7 @@ int main()
 		switch(s_main_menu())
 		{
 			case 1:
-				//s_load_game();
+				s_load_game();
 				break;
 			case 2:
 				s_show_leaderboard();
