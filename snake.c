@@ -6,7 +6,7 @@
 //     \______.'|_____|\____||____| |____||____||____||________|                                                          
 //  
 //  TODO:
-//  - supress new lines while entering name/surname
+//  - suppress new lines while entering name/surname
 //  - kill buffered keypressed.
 //   
 //  REFERENCES:
@@ -557,7 +557,7 @@ int s_enter_player(int p_id)
     // enter new player name 
     SetConsoleCursorPosition(screen.h_active, (COORD){23,14});
     s_screen_show_cursor();
-    scanf(" %s", players[p_id].name);                           // leading sero in formatter supress spaces and new lines
+    scanf(" %s", players[p_id].name);                           // leading space in formatter should suppress spaces and new lines
     sprintf(tmp_str,"Name:    %-20s", players[p_id].name);      // print entered name
     s_screen_printxy(15,15,tmp_str,S_SCR_COL_MONOCHROME);       // print Name to screen buffer
     s_screen_hide_cursor();                                     
@@ -566,7 +566,7 @@ int s_enter_player(int p_id)
     // enter new player surname
     SetConsoleCursorPosition(screen.h_active, (COORD){23,15});
     s_screen_show_cursor();
-    scanf(" %s", players[p_id].surname);                        // leading sero in formatter supress spaces and new lines
+    scanf(" %s", players[p_id].surname);                        // leading space in formatter should suppress spaces and new lines
     sprintf(tmp_str,"Surname: %-20s", players[p_id].surname);   // print entered surname
     s_screen_printxy(15,16,tmp_str,S_SCR_COL_MONOCHROME);       // print Name to screen buffer
     s_screen_hide_cursor();                                     
