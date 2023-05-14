@@ -70,6 +70,7 @@
 #define KB_PAUSE_BUTTON 112 //P
 #define S_PLAYERS 6
 #define S_SCR_COL_MONOCHROME WHITE+BG_BLACK
+#define S_SCR_COL_STATUS BRIGHT_WHITE+BG_BLACK
 #define S_SCR_WALL (char)219
 #define S_SCR_COL_WALL RED+BG_BLACK
 #define S_SCR_WALL_UP_CORNER (char)223
@@ -106,8 +107,15 @@ struct STATS
     struct SCORE score;
 };
 
+struct SNAKE
+{
+	int speed;
+	int length;
+};
+
 struct SCREEN screen;
 struct STATS players[S_PLAYERS];
+struct SNAKE snake;
 int ndx[S_PLAYERS];
 FILE* f_log_file;
 FILE* f_player_stats;
@@ -361,18 +369,28 @@ void s_close()
     }	
 }
 
-void s_show_current_profile()
+void s_show_status()
 {
 	char tmp_str[80];
-	sprintf(tmp_str,"Profile:                                                                       ");
+	s_screen_printxy(2,21,"Profile:                                                            Speed:    ",S_SCR_COL_STATUS);
+	s_screen_printxy(2,22,"Score:                                                             Length:    ",S_SCR_COL_STATUS);
+	s_screen_printxy(2,23,"                                                                              ",S_SCR_COL_STATUS);
+	s_screen_printxy(2,24,"                                                                              ",S_SCR_COL_STATUS);
+	s_screen_printxy(2,25,"                                                                              ",S_SCR_COL_STATUS);
 	if(current_player != -1)
 	{
 		if ( !players[current_player].empty )
 		{
-			sprintf(tmp_str,"Profile: %s %s                                ", players[current_player].name, players[current_player].surname);
+			sprintf(tmp_str,"%s %s", players[current_player].name, players[current_player].surname);
+			s_screen_printxy(11,21,tmp_str,S_SCR_COL_STATUS);
+			sprintf(tmp_str,"%5d", players[current_player].score.total);
+			s_screen_printxy(11,22,tmp_str,S_SCR_COL_STATUS);
+			sprintf(tmp_str,"%3d", snake.speed);
+			s_screen_printxy(77,21,tmp_str,S_SCR_COL_STATUS);
+			sprintf(tmp_str,"%3d", snake.length);
+			s_screen_printxy(77,22,tmp_str,S_SCR_COL_STATUS);
 		}
  	}
-	s_screen_printxy(2,21,tmp_str,S_SCR_COL_MONOCHROME);
 	s_screen_buffer_flush();
 }
 
@@ -393,7 +411,7 @@ void s_show_profiles(char *title)
 		s_screen_printxy(8,7+i,tmp_str,S_SCR_COL_MONOCHROME);
 		s_log(tmp_str);
 	}
-	s_show_current_profile();
+	s_show_status();
 	s_screen_buffer_flush();
 	//printxy(17,13,"(You can select from profiles by pressing 1-6)");
 	//s_wait_for_any_key();
@@ -523,7 +541,7 @@ int s_main_menu(void)
 	s_screen_printxy(10,7,"3. Select Profile",S_SCR_COL_MONOCHROME);
 	s_screen_printxy(10,9,"0. Exit",S_SCR_COL_MONOCHROME);
 	s_screen_buffer_flush();
-	s_show_current_profile();
+	s_show_status();
 	selected = s_menu_selection(0, 3);
 	return(selected);
 } 
@@ -603,7 +621,7 @@ void s_select_profile()
 		players[current_player].current = 0;  // unselect current pplayer profile
 		current_player=selection-1;           // set selected profile as current profile
 		players[selection-1].current = 1;     // set 'current' flag on selected player profile
-		s_show_current_profile();             // show profile
+		s_show_status();             // show profile
 	}
 }
 
@@ -625,7 +643,7 @@ void s_show_leaderboard()
 		s_screen_printxy(6,15,"Sort by:",S_SCR_COL_MONOCHROME);
 		s_screen_printxy(6,16,"1. Surname   2. Name      3. ID        4. Round     5. Total score",S_SCR_COL_MONOCHROME);
 		s_screen_printxy(6,17,"0. Back                                                           ",S_SCR_COL_MONOCHROME);
-		s_show_current_profile();
+		s_show_status();
 		s_screen_buffer_flush();
 		selection = s_menu_selection(0,5);
 		if (selection !=0 )
