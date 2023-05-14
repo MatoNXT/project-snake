@@ -1,11 +1,21 @@
-//
-// 
-//
+//      ______   ____  _____       _       ___  ____   ________  
+//    .' ____ \ |_   \|_   _|     / \     |_  ||_  _| |_   __  | 
+//    | (___ \_|  |   \ | |      / _ \      | |_/ /     | |_ \_| 
+//     _.____`.   | |\ \| |     / ___ \     |  __'.     |  _| _  
+//    | \____) | _| |_\   |_  _/ /   \ \_  _| |  \ \_  _| |__/ | 
+//     \______.'|_____|\____||____| |____||____||____||________|                                                          
+//  
 //  TODO:
-// 	- fix sort when empty very sus 
-//  - colors
 //  - supress new lines while entering name/surname
 //  - kill buffered keypressed.
+//   
+//  REFERENCES:
+//  original snake source - https://github.com/Contagious06/console-snake-game/blob/master/src/snake.c
+//  console functions     - https://learn.microsoft.com/en-us/windows/console/using-the-console
+//  tuning functions      - https://chat.openai.com/chat
+//  ascii art             - https://patorjk.com/software/taag/
+//
+
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
@@ -15,19 +25,70 @@
 #include <conio.h>
 #include <windows.h> 
 
-#define UP_ARROW 72
-#define LEFT_ARROW 75
-#define RIGHT_ARROW 77
-#define DOWN_ARROW 80
-#define ENTER_KEY 13
-#define EXIT_BUTTON 27 //ESC
-#define PAUSE_BUTTON 112 //P
-#define _PLAYERS 6
-#define SC_WALL (char)219
-#define SC_UP_CORNER (char)223
-#define SC_DOWN_CORNER (char)220
-#define SC_LINE (char)196
-#define SC_SPACE (char)32
+//text colors
+#define BLACK              0
+#define BLUE               1
+#define GREEN              2
+#define CYAN               3
+#define RED                4
+#define MAGENTA            5
+#define BROWN              6
+#define WHITE              7
+#define GRAY               8
+#define LIGHT_BLUE         9
+#define LIGHT_GREEN       10
+#define LIGHT_CYAN        11
+#define LIGHT_RED         12
+#define LIGHT_MAGENTA     13
+#define YELLOW            14
+#define BRIGHT_WHITE      15
+// background colors
+#define BG_BLACK           0
+#define BG_BLUE           16
+#define BG_GREEN          32
+#define BG_CYAN           48
+#define BG_RED            64
+#define BG_MAGENTA        80
+#define BG_BROWN          96
+#define BG_WHITE         112
+#define BG_GRAY          128
+#define BG_LIGHT_BLUE    144
+#define BG_LIGHT_GREEN   160
+#define BG_LIGHT_CYAN    176
+#define BG_LIGHT_RED     192
+#define BG_LIGHT_MAGENTA 208
+#define BG_YELLOW        224
+#define BG_BRIGHT_WHITE  240
+
+
+#define KB_UP_ARROW 72
+#define KB_LEFT_ARROW 75
+#define KB_RIGHT_ARROW 77
+#define KB_DOWN_ARROW 80
+#define KB_ENTER_KEY 13
+#define KB_EXIT_BUTTON 27 //ESC
+#define KB_PAUSE_BUTTON 112 //P
+#define S_PLAYERS 6
+#define S_SCR_COL_MONOCHROME WHITE+BG_BLACK
+#define S_SCR_WALL (char)219
+#define S_SCR_COL_WALL RED+BG_BLACK
+#define S_SCR_WALL_UP_CORNER (char)223
+#define S_SCR_WALL_DOWN_CORNER (char)220
+#define S_SCR_LINE (char)196
+#define S_SCR_SPACE (char)32
+#define S_SCR_LINES 25
+#define S_SCR_COLUMNS 80
+#define S_SCR_BUFFER_SIZE S_SCR_LINES*S_SCR_COLUMNS
+
+struct SCREEN
+{
+    HANDLE h_stdout, h_active;           // screen handle
+    SMALL_RECT rectangle;
+	COORD size;
+	COORD buffer_coord;
+    CHAR_INFO buffer[S_SCR_BUFFER_SIZE];    // screen buffer [25][80];
+    BOOL f_success;
+};
 
 struct SCORE
 {
@@ -45,8 +106,9 @@ struct STATS
 	struct SCORE score;
 };
 
-struct STATS players[_PLAYERS];
-int ndx[_PLAYERS];
+struct SCREEN screen;
+struct STATS players[S_PLAYERS];
+int ndx[S_PLAYERS];
 FILE* log_file;
 FILE* player_stats;
 int current_player = -1;
@@ -81,15 +143,39 @@ void s_log(const char *message)
 
 void printxy(int x, int y, const char *s)
 {
-  COORD coord = { x, y};
-  SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-  printf("%s",s);
+	COORD coord = { x, y};
+	SetConsoleCursorPosition(screen.h_active, coord);
+	printf("%s",s);
 }
 
-char waitForAnyKey(void)
+void s_screen_printxy(int col, int lin, const char *s, int attr)
+{
+	int position = (lin-1)*80+(col-1);
+	for (int i = 0; s[i]!=0; i++){
+		screen.buffer[position+i].Char.AsciiChar=s[i];
+		screen.buffer[position+i].Attributes=attr;
+	}
+}
+
+void s_screen_buffer_flush()
+{
+	screen.f_success = WriteConsoleOutput(
+		screen.h_active,          // screen hand3le
+		screen.buffer,            // buffer to copy from
+		screen.size,              // col-row size of screen buffer
+		screen.buffer_coord,      // 
+		&screen.rectangle         // top left src cell in screen buffer 
+	);  
+	if (! screen.f_success)
+	{
+		printf("WriteConsoleOutput failed - (%d)\n", GetLastError());
+	}
+}
+
+char s_wait_for_any_key(void)
 {
 	int pressed;
-	
+
 	while(!kbhit());
 	
 	pressed = getch();
@@ -99,27 +185,80 @@ char waitForAnyKey(void)
 
 void s_clear()
 {
-	int x; 
 	char tmp_str[80];
 
-	//sprintf(tmp_str,"%*s",80,WALL);
-
-	memset(tmp_str,SC_UP_CORNER,80); tmp_str[0]=SC_WALL; tmp_str[79]=SC_WALL; tmp_str[80]='\0';
-	printxy(1,1,tmp_str);
-	memset(tmp_str,SC_SPACE,80); tmp_str[0]=SC_WALL; tmp_str[79]=SC_WALL;tmp_str[80]='\0';
-	for(x = 2; x<=19; x++)
+	memset(tmp_str,S_SCR_WALL_UP_CORNER,80); tmp_str[0]=S_SCR_WALL; tmp_str[79]=S_SCR_WALL; tmp_str[80]='\0';
+	s_screen_printxy(1,1,tmp_str,S_SCR_COL_WALL);
+	memset(tmp_str,S_SCR_SPACE,80); tmp_str[0]=S_SCR_WALL; tmp_str[79]=S_SCR_WALL;tmp_str[80]='\0';
+	for(int x = 2; x<=19; x++)
 	{
-		printxy(1,x,tmp_str);
+		s_screen_printxy(1,x,tmp_str,S_SCR_COL_WALL);
 	}
-	memset(tmp_str,SC_DOWN_CORNER,80); tmp_str[0]=SC_WALL; tmp_str[79]=SC_WALL; tmp_str[80]='\0';
-	printxy(1,20,tmp_str); 
+	memset(tmp_str,S_SCR_WALL_DOWN_CORNER,80); tmp_str[0]=S_SCR_WALL; tmp_str[79]=S_SCR_WALL; tmp_str[80]='\0';
+	s_screen_printxy(1,20,tmp_str,S_SCR_COL_WALL);
+	memset(tmp_str,S_SCR_SPACE,80); tmp_str[80]='\0';
+	for(int x = 21; x<=S_SCR_LINES; x++)
+	{
+		s_screen_printxy(1,x,tmp_str,S_SCR_COL_WALL);
+	}
+	s_screen_buffer_flush();
 }
 void s_reset_ndx()
 {
-	for(int i =0; i<_PLAYERS; i++)
+	for(int i =0; i<S_PLAYERS; i++)
 	{
 		ndx[i]=i;
 	}	
+}
+
+void s_screen_init()
+{
+    screen.h_stdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    screen.h_active = CreateConsoleScreenBuffer(
+       GENERIC_READ |           // read/write access
+       GENERIC_WRITE,
+       FILE_SHARE_READ |
+       FILE_SHARE_WRITE,        // shared
+       NULL,                    // default security attributes
+       CONSOLE_TEXTMODE_BUFFER, // must be TEXTMODE
+       NULL);                   // reserved; must be NULL
+    if (screen.h_stdout == INVALID_HANDLE_VALUE ||
+            screen.h_active == INVALID_HANDLE_VALUE)
+    {
+        printf("CreateConsoleScreenBuffer failed - (%d)\n", GetLastError());
+        exit(1);
+    }
+    // Make the new screen buffer the active screen buffer.
+    if (! SetConsoleActiveScreenBuffer(screen.h_active) )
+    {
+        printf("SetConsoleActiveScreenBuffer failed - (%d)\n", GetLastError());
+        exit(1);
+    }
+	//screen setup
+	screen.rectangle.Top=0;      // screen coordinates 
+	screen.rectangle.Left=0;     // screen coordinates
+	screen.rectangle.Bottom=24;  // screen coordinates
+	screen.rectangle.Right=79;   // screen coordinates
+	screen.size.Y=S_SCR_LINES;     // number of screen lines
+	screen.size.X=S_SCR_COLUMNS;   // number of screen columns
+    screen.buffer_coord.X=0;
+	screen.buffer_coord.Y=0;
+}
+
+void s_screen_hide_cursor()
+{
+   CONSOLE_CURSOR_INFO info;
+   info.dwSize = 100;
+   info.bVisible = FALSE;
+   SetConsoleCursorInfo(screen.h_active, &info);
+}
+
+void s_screen_show_cursor()
+{
+   CONSOLE_CURSOR_INFO info;
+   info.dwSize = 100;
+   info.bVisible = TRUE;
+   SetConsoleCursorInfo(screen.h_active, &info);
 }
 
 void s_initialize()
@@ -133,12 +272,21 @@ void s_initialize()
     s_reset_ndx();
 	s_log("********************************************************************************");
 	current_player=-1;
+	s_screen_init();
+	s_screen_hide_cursor();
 }
 
-void s_dispose()
+void s_close()
 {
 	fclose(log_file);
 	fclose(player_stats);
+	// Restore the original active screen buffer.
+	s_screen_show_cursor();
+    if (! SetConsoleActiveScreenBuffer(screen.h_stdout))
+    {
+        printf("SetConsoleActiveScreenBuffer failed - (%d)\n", GetLastError());
+        exit(1);
+    }	
 }
 
 int s_save()
@@ -150,7 +298,7 @@ int s_save()
     }
 	//fwrite(&players, sizeof(struct STATS), PLAYERS, player_stats);
 	fseek(player_stats,0,SEEK_SET);
-	fwrite(players, sizeof(struct STATS), _PLAYERS, player_stats);
+	fwrite(players, sizeof(struct STATS), S_PLAYERS, player_stats);
 }
 
  void s_show_current_profile()
@@ -158,27 +306,35 @@ int s_save()
 	char tmp_str[80];
 	if(current_player != -1)
 	{
-		sprintf(tmp_str,"Profile: %s %s                                ", players[current_player].name, players[current_player].surname);
-	}
-	else
-	{
-		sprintf(tmp_str,"Profile:                                                                       ");
-	}
-	printxy(2,21,tmp_str);
+		if (players[current_player].empty!=0)
+		{
+			sprintf(tmp_str,"Profile: %s %s                                ", players[current_player].name, players[current_player].surname);
+		}
+		else
+		{
+			sprintf(tmp_str,"Profile:                                                                       ");
+		}
+ 	}
+	s_screen_printxy(2,21,tmp_str,S_SCR_COL_MONOCHROME);
+	s_screen_buffer_flush();
  }
 
 void s_load()
 {
-    fread(players, sizeof(struct STATS), _PLAYERS, player_stats);
-	for(int i =0; i <= 5; i++)
+    fread(players, sizeof(struct STATS), S_PLAYERS, player_stats);
+	for(int i =0; i < S_PLAYERS; i++)
 	{
 		players[i].id = i + 1;
 		if (players[i].current == 1)
 		{
 			current_player = i;
 		}
-	}
-    
+		if (players[i].empty == 0)  // fill empty profile with '~' so sorting will place it to the end
+		{
+			sprintf(players[i].name,"~~~~~~~~~~~~~~~~~~~~");
+			sprintf(players[i].surname,"~~~~~~~~~~~~~~~~~~~~");
+		}
+	}  
 }
 
 void s_show_profiles(char *title)
@@ -186,27 +342,29 @@ void s_show_profiles(char *title)
 	int i;
 	char tmp_str[80];
 	s_clear();
-	printxy(34,3,title);
-	printxy(8,4,"                                              Total  Round         ");
-	printxy(8,5,"ID  Name                 Surname              Score  1     2     3 ");
-	memset(tmp_str,SC_LINE,66); tmp_str[66]='\0';
-	printxy(8,6,tmp_str);
-	for(i = 0; i<_PLAYERS; i++)
+	s_screen_printxy(34,3,title,S_SCR_COL_MONOCHROME);
+	s_screen_printxy(8,4,"                                              Total  Round         ",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(8,5,"ID  Name                 Surname              Score  1     2     3 ",S_SCR_COL_MONOCHROME);
+	memset(tmp_str,S_SCR_LINE,66); tmp_str[66]='\0';
+	s_screen_printxy(8,6,tmp_str,S_SCR_COL_MONOCHROME);
+	for(i = 0; i<S_PLAYERS; i++)
 	{
-		if(players[ndx[i]].empty == 0)
-		{
-			sprintf(tmp_str,"%-3d %-20s",players[ndx[i]].id, "EMPTY");
-		}
-		else
-		{
-			sprintf(tmp_str,"%-3d %-20s %-20s %-5d  %-5d %-5d %-5d",players[ndx[i]].id, players[ndx[i]].name, players[ndx[i]].surname, players[ndx[i]].score.total, players[ndx[i]].score.round[0], players[ndx[i]].score.round[1], players[ndx[i]].score.round[2]);
-		}
-		printxy(8,7+i,tmp_str);
+		// if(players[ndx[i]].empty == 0)
+		// {
+		// 	sprintf(tmp_str,"%-3d %-20s",players[ndx[i]].id, "~~~~~~~~~~~~~~~~~~~~");
+		// }
+		// else
+		// {
+		// 	sprintf(tmp_str,"%-3d %-20s %-20s %-5d  %-5d %-5d %-5d",players[ndx[i]].id, players[ndx[i]].name, players[ndx[i]].surname, players[ndx[i]].score.total, players[ndx[i]].score.round[0], players[ndx[i]].score.round[1], players[ndx[i]].score.round[2]);
+		// }
+		sprintf(tmp_str,"%-3d %-20s %-20s %-5d  %-5d %-5d %-5d",players[ndx[i]].id, players[ndx[i]].name, players[ndx[i]].surname, players[ndx[i]].score.total, players[ndx[i]].score.round[0], players[ndx[i]].score.round[1], players[ndx[i]].score.round[2]);
+		s_screen_printxy(8,7+i,tmp_str,S_SCR_COL_MONOCHROME);
 		s_log(tmp_str);
 	}
 	s_show_current_profile();
+	s_screen_buffer_flush();
 	//printxy(17,13,"(You can select from profiles by pressing 1-6)");
-	//waitForAnyKey();
+	//s_wait_for_any_key();
 	return;
 }
 
@@ -246,17 +404,14 @@ void s_sort(int attr)
 		while(change)
 		{
 			change = 0;
-			for (int i=0; i < _PLAYERS-1; i++)
+			for (int i=0; i < S_PLAYERS-1; i++)
 			{
-				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
+				if (strcmp(to_lower(players[ndx[i]].surname),to_lower(players[ndx[i+1]].surname))>0)
 				{
-					if (strcmp(to_lower(players[ndx[i]].surname),to_lower(players[ndx[i+1]].surname))>0)
-					{
-							tmp = ndx[i];
-							ndx[i] = ndx[i+1];
-							ndx[i+1] = tmp;
-							change = 1;
-					}
+						tmp = ndx[i];
+						ndx[i] = ndx[i+1];
+						ndx[i+1] = tmp;
+						change = 1;
 				}
 			}
 		}
@@ -266,7 +421,7 @@ void s_sort(int attr)
 		while(change)
 		{
 			change = 0;
-			for (int i=0; i < _PLAYERS-1; i++)
+			for (int i=0; i < S_PLAYERS-1; i++)
 			{
 				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
 				{
@@ -291,7 +446,7 @@ void s_sort(int attr)
 		while(change)
 		{
 			change = 0;
-			for (int i=0; i < _PLAYERS-1; i++)
+			for (int i=0; i < S_PLAYERS-1; i++)
 			{
 				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
 				{
@@ -311,7 +466,7 @@ void s_sort(int attr)
 		while(change)
 		{
 			change = 0;
-			for (int i=0; i < _PLAYERS-1; i++)
+			for (int i=0; i < S_PLAYERS-1; i++)
 			{
 				if (players[ndx[i]].empty!=0 && players[ndx[i+1]].empty!=0)
 				{
@@ -339,11 +494,12 @@ int s_main_menu(void)
 	
 	s_clear();
 	//printxy(0,0,"Pixel united");
-	printxy(36,4,"SNAKE");
-	printxy(10,5,"1. Start game");
-	printxy(10,6,"2. High Scores");
-	printxy(10,7,"3. Select Profile");
-	printxy(10,9,"0. Exit");
+	s_screen_printxy(36,4,"SNAKE",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(10,5,"1. Start game",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(10,6,"2. High Scores",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(10,7,"3. Select Profile",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(10,9,"0. Exit",S_SCR_COL_MONOCHROME);
+	s_screen_buffer_flush();
 	s_show_current_profile();
 	selected = s_menu_selection(0, 3);
 	return(selected);
@@ -353,12 +509,20 @@ int s_enter_player(int p_id)
 {
 	char tmp_str[10];
 	sprintf(tmp_str,"ID: %-3d", p_id+1);
-	printxy(15,14,tmp_str);
-	printxy(15,16,"Surname: ");
-	printxy(15,15,"Name: ");
-	scanf("%s", players[p_id].name);
-	printxy(15,16,"Surname: ");
-	scanf("%s", players[p_id].surname);
+	s_screen_printxy(15,14,tmp_str,S_SCR_COL_MONOCHROME);
+	s_screen_printxy(15,16,"Surname: ",S_SCR_COL_MONOCHROME);
+	s_screen_printxy(15,15,"Name: ",S_SCR_COL_MONOCHROME);
+	s_screen_buffer_flush();
+	SetConsoleCursorPosition(screen.h_active, (COORD){24,14});
+	s_screen_show_cursor();
+	scanf(" %s", players[p_id].name);                          // leading sero in formatter supress spaces and new lines
+	s_screen_hide_cursor();
+	s_screen_printxy(15,16,"Surname: ",S_SCR_COL_MONOCHROME);
+	s_screen_buffer_flush();
+	SetConsoleCursorPosition(screen.h_active, (COORD){24,15});
+	s_screen_show_cursor();
+	scanf(" %s", players[p_id].surname);                       // leading sero in formatter supress spaces and new lines
+	s_screen_hide_cursor();
 	players[p_id].id = p_id+1;
 	players[p_id].empty = 1;
 	players[p_id].score.total = 0;
@@ -376,7 +540,7 @@ void s_select_profile()
 
 	s_show_profiles("Select profile:");
     
-	selection = s_menu_selection(0,_PLAYERS);
+	selection = s_menu_selection(0,S_PLAYERS);
 	if(selection != 0)
 	{
 		// check if selected profile is empty
@@ -386,13 +550,15 @@ void s_select_profile()
 		}
 		else // if profile is not empty ask if profile will be overwritten
 		{
-			printxy(6,15,"Overwrite existing profile? [Y/N]");
+			s_screen_printxy(6,15,"Overwrite existing profile? [Y/N]",S_SCR_COL_MONOCHROME);
+			s_screen_buffer_flush();
 			do
 			{
-				pressed = waitForAnyKey();
+				pressed = s_wait_for_any_key();
 				pressed = tolower(pressed);
 			} while (!(pressed == 'y' || pressed == 'n'));
-			printxy(6,15,"                                 ");
+			s_screen_printxy(6,15,"                                 ",S_SCR_COL_MONOCHROME);
+			s_screen_buffer_flush();
 			if (pressed == 'y')
 			{
 				s_enter_player(selection-1);
@@ -408,7 +574,8 @@ void s_select_profile()
 int s_sort_round()
 {
 	int round = 1;
-	printxy(6,17,"Sort by round number [1-3]:");
+	s_screen_printxy(6,17,"Sort by round number [1-3]:",S_SCR_COL_MONOCHROME);
+	s_screen_buffer_flush();
 	round = s_menu_selection(1,3)+40;
 	return round;
 }
@@ -419,10 +586,11 @@ void s_show_leaderboard()
 	while (1)
 	{
 		s_show_profiles("Leaderboard");
-		printxy(6,15,"Sort by:");
-		printxy(6,16,"1. Surname   2. Name      3. ID        4. Round     5. Total score");
-		printxy(6,17,"0. Back                                                           ");
+		s_screen_printxy(6,15,"Sort by:",S_SCR_COL_MONOCHROME);
+		s_screen_printxy(6,16,"1. Surname   2. Name      3. ID        4. Round     5. Total score",S_SCR_COL_MONOCHROME);
+		s_screen_printxy(6,17,"0. Back                                                           ",S_SCR_COL_MONOCHROME);
 		s_show_current_profile();
+		s_screen_buffer_flush();
 		selection = s_menu_selection(0,5);
 		if (selection !=0 )
 		{
@@ -466,7 +634,7 @@ void s_show_leaderboard()
 // 	{
 // 		gotoxy(10,5);
 // 		printf("Select The game speed between 1 and 9.");
-// 		speed = waitForAnyKey()-48;
+// 		speed = s_wait_for_any_key()-48;
 // 	} while(speed < 1 || speed > 9);
 // 	return(speed);
 // }
@@ -504,33 +672,33 @@ void s_show_leaderboard()
 // 	return;
 // }
 
-void s_exit(void)
+int s_exit(void)
 {
 	char pressed;
 
-	printxy(10,15,"Are you sure you want to exit(Y/N)");
+	s_screen_printxy(10,15,"Are you sure you want to exit(Y/N)",S_SCR_COL_MONOCHROME);
+    s_screen_buffer_flush();
 	
 	do
 	{
-		pressed = waitForAnyKey();
+		pressed = s_wait_for_any_key();
 		pressed = tolower(pressed);
 	} while (!(pressed == 'y' || pressed == 'n'));
 	
 	if (pressed == 'y')
 	{
 		s_save();
-		s_dispose();
-		s_clear(); //clear the console
+		s_close();
+		//s_clear(); //clear the console
 		exit(0);
 	}
-	return;
 }
 
 int main()
-{ 
+{
 	s_initialize();
 	s_load();
-	//waitForAnyKey(); 
+	//s_wait_for_any_key(); 
 	do
 	{	
 		switch(s_main_menu())
@@ -549,6 +717,6 @@ int main()
 				break;			
 		}		
 	} while(1);
-	//waitForAnyKey();  
+	//s_wait_for_any_key();  
 	return 0;
 }
