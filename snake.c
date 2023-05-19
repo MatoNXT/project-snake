@@ -410,7 +410,7 @@ void s_show_status()
     s_screen_printxy(2,22,"Score:                                                             Length:    ",S_SCR_COL_STATUS);
     s_screen_printxy(2,23,"                                                                              ",S_SCR_COL_STATUS);
     s_screen_printxy(2,24,"                                                                              ",S_SCR_COL_STATUS);
-    s_screen_printxy(1,25," Coder: Martin Musec, 2A1                                              (c) 2023 ",GRAY+BG_WHITE);
+    s_screen_printxy(1,25," Coder: Martin Musec, 2a1                                              (c) 2023 ",GRAY+BG_WHITE);
     if(current_player != -1)
     {
         if ( !players[current_player].empty )
@@ -727,11 +727,9 @@ void s_food_generate()
         // only generate food for not existing or eaten one
         if (food[f].col == 0 && food[f].lin == 0)
         {
-            do
+            do // keep generate position for food unril there is no collision
             {
-                //srand ( time(NULL) );
                 r_col = rand() % (S_SCR_COLUMNS-2) + 2;
-                //srand ( time(NULL) );
                 r_lin = rand() % (S_SCR_LINES-7) + 2;
             } while (s_food_collision(r_col,r_lin));
             food[f].col = r_col;
@@ -925,8 +923,6 @@ void s_game_start()
             s_snake_show();
             s_screen_buffer_flush();
             Sleep(250);
-            //FlushConsoleInputBuffer(screen.h_active);
-            //fflush(stdin);
             if (pressed == KB_ESC)
             {
                 game_over = 1;
