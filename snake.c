@@ -87,6 +87,10 @@
 #define S_BODY_HEAD (char)219
 #define S_BODY_LINE_COL S_SCR_COL_MONOCHROME
 
+#define S_FOOD_COUNT 10
+#define S_FOOD (char)234
+#define S_FOOD_COL LIGHT_GREEN+BG_BLACK
+
 struct SCREEN
 {
     HANDLE h_stdout, h_active;           // screen handle
@@ -121,6 +125,15 @@ struct SNAKE_BODY
     int att;
 };
 
+struct FOOD
+{
+    int col;
+    int lin;
+    char chr;
+    int att;
+};
+
+
 struct SNAKE
 {
     struct SNAKE_BODY body[S_MAX_BODY_LENGTH];
@@ -132,6 +145,7 @@ struct SNAKE
 struct SCREEN screen;
 struct STATS players[S_PLAYERS];
 struct SNAKE snake;
+struct FOOD food[S_FOOD_COUNT];
 int ndx[S_PLAYERS];
 FILE* f_log_file;
 FILE* f_player_stats;
@@ -681,37 +695,52 @@ void s_show_leaderboard()
     }
 }
 
-// int s_generate_food(int foodXY[], int width, int height, int snakeXY[][SNAKE_ARRAY_SIZE], int snakeLength)
-// {
-//     int i;
-    
-//     do
-//     {
-//         srand ( time(NULL) );
-//         foodXY[0] = rand() % (width-2) + 2;
-//         srand ( time(NULL) );
-//         foodXY[1] = rand() % (height-6) + 2;
-//     } while (collisionSnake(foodXY[0], foodXY[1], snakeXY, snakeLength, 0)); //This should prevent the "Food" from being created on top of the snake. - However the food has a chance to be created ontop of the snake, in which case the snake should eat it...
+int s_food_collision(int col, int lin)
+{
+    // check collision with snake body
+    for(int s = 0; s<= snake.length; s++)
+    {
+        if (snake.body[s].col==col && snake.body[s].lin==lin)
+        {
+            return 1;
+        }
+    }
+    // check collision with existing food
+    for(int f = 0; f< S_FOOD_COUNT; f++)
+    {
+        if (food[f].col != 0 && food[f].lin != 0) // do not check eaten food
+        {
+            if (food[f].col==col && food[f].lin==lin)
+            {
+                return 1;
+            }
+        }
+    }
+    return 0;
+};
 
-//     gotoxy(foodXY[0] ,foodXY[1]);
-//     printf("%c", FOOD);
-    
-//     return(0);
-// }
-
-// int s_get_game_speed(void)
-// {
-//     int speed;
-//     s_screen_clear();
-    
-//     do
-//     {
-//         gotoxy(10,5);
-//         printf("Select The game speed between 1 and 9.");
-//         speed = s_wait_for_any_key()-48;
-//     } while(speed < 1 || speed > 9);
-//     return(speed);
-// }
+void s_food_generate()
+{
+	int r_lin,r_col;
+	for (int f = 0; f < S_FOOD_COUNT; f++)
+    {
+        // only generate food for not existing or eaten one
+        if (food[f].col == 0 && food[f].lin == 0)
+        {
+            do
+            {
+                //srand ( time(NULL) );
+                r_col = rand() % (S_SCR_COLUMNS-2) + 2;
+                //srand ( time(NULL) );
+                r_lin = rand() % (S_SCR_LINES-7) + 2;
+            } while (s_food_collision(r_col,r_lin));
+            food[f].col = r_col;
+            food[f].lin = r_lin;        
+            s_screen_printxy_chr(food[f].col,food[f].lin,food[f].chr,food[f].att);
+        }
+    };
+    s_screen_buffer_flush();
+};
 
 void s_snake_prepare(int col, int lin, int length, int direction)
 {
@@ -720,22 +749,30 @@ void s_snake_prepare(int col, int lin, int length, int direction)
     {
         snake.body[s].col = col-s;
         snake.body[s].lin = lin;
-        snake.body[s].chr = S_BODY_LINE;
+        snake.body[s].chr = (char)S_BODY_LINE;
         snake.body[s].att = S_BODY_LINE_COL;
     };
-    snake.body[1].chr = S_BODY_HEAD;
+    snake.body[0].chr = (char)S_BODY_HEAD;
     snake.speed = 1;
     snake.direction = direction;
     // prepare tail - tail will be clearing last part of snake whem moving
     snake.body[length].col = col-length;
     snake.body[length].lin = lin;
-    snake.body[length].chr = S_SCR_SPACE;
+    snake.body[length].chr = (char)S_SCR_SPACE;
     snake.body[length].att = S_SCR_COL_MONOCHROME;
+    // prepare food
+    for(int f = 0; f< S_FOOD_COUNT; f++)
+    {
+        food[f].col=0;
+        food[f].lin=0;
+        food[f].chr=S_FOOD;
+        food[f].att=S_FOOD_COL;
+    }
 };
 
 void s_snake_show()
 {
-    for(int s = 1; s < snake.length; s++)
+    for(int s = 0; s <= snake.length; s++)
     {
         s_screen_printxy_chr(
             snake.body[s].col,
@@ -746,37 +783,92 @@ void s_snake_show()
     }
 };
 
-void s_snake_move()
+void s_snake_food_collision()
 {
-    // decide how to move head
-    switch (snake.direction)
+    for(int f = 0; f< S_FOOD_COUNT; f++)
     {
-        case KB_ARROW_RIGHT:
-                snake.body[0].col=+1;
-            break;
-        case KB_ARROW_LEFT:
-                snake.body[0].col=-1;
-            break;
-        case KB_ARROW_UP:
-                snake.body[0].lin=-1;
-            break;
-        case KB_ARROW_DOWN:
-                snake.body[0].lin=+1;
-            break;
-        default:
-            break;
+        if (food[f].col != 0 && food[f].lin != 0) // do not check eaten food
+        {
+            if (food[f].col==snake.body[0].col && food[f].lin==snake.body[0].lin)
+            {
+                snake.length+=1;
+                // mark food as eaten
+                food[f].col=0;
+                food[f].lin=0;
+            }
+        }
     }
-    // then move whole body - start from tail
+    s_food_generate();
+};
+
+int s_snake_body_collision()
+{
+    for(int s = 1; s<= snake.length; s++)
+    {
+        if (snake.body[s].col==snake.body[0].col && snake.body[s].lin==snake.body[0].lin)
+        {
+            return 1;
+        }
+    }
+    return 0;
+};
+
+int s_snake_wall_collision()
+{
+    if (snake.body[0].col==1 || snake.body[0].col==S_SCR_COLUMNS)
+    {
+        return 1;
+    }
+    if (snake.body[0].lin==1 || snake.body[0].lin==S_SCR_LINES-5)
+    {
+        return 1;
+    }
+    return 0;
+};
+
+int s_snake_collision()
+{
+    if (s_snake_body_collision())
+    {
+        return 1;
+    }
+    if (s_snake_wall_collision())
+    {
+        return 1;
+    }
+    s_snake_food_collision();
+    return 0;
+};
+
+int s_snake_move()
+{
+    int collision = 0;
+    // move whole body - start from tail
     for(int s = snake.length; s > 0; s--)
     {
         snake.body[s].col = snake.body[s-1].col;
         snake.body[s].lin = snake.body[s-1].lin;
     }
-};
-
-void s_food_generate()
-{
-
+    // last - move head
+    switch (snake.direction)
+    {
+        case KB_ARROW_RIGHT:
+                snake.body[0].col+=1;
+            break;
+        case KB_ARROW_LEFT:
+                snake.body[0].col-=1;
+            break;
+        case KB_ARROW_UP:
+                snake.body[0].lin-=1;
+            break;
+        case KB_ARROW_DOWN:
+                snake.body[0].lin+=1;
+            break;
+        default:
+            break;
+    }
+    collision = s_snake_collision();
+    return collision;
 };
 
 int s_snake_key_pressed()
@@ -785,17 +877,33 @@ int s_snake_key_pressed()
 	
 	if(kbhit())
 	{
-		pressed=tolower(getch());
+		while (kbhit()) // this loop is to clear keyboaard buffer
+        {
+            pressed=getch();
+        }
+        // if getch return 224 or 0, read keyboard once more time
+        if (pressed == 224 || pressed == 0)
+        {
+            pressed=getch();
+        }
 		if (snake.direction != pressed)
 		{
 			if(pressed == KB_ARROW_DOWN && snake.direction != KB_ARROW_UP)
-				snake.direction = pressed;
+            {
+        		snake.direction = pressed;
+            }
 			else if (pressed == KB_ARROW_UP && snake.direction != KB_ARROW_DOWN)
+            {
 				snake.direction = pressed;
+            }
 			else if (pressed == KB_ARROW_LEFT && snake.direction != KB_ARROW_RIGHT)
+            {
 				snake.direction = pressed;
+            }
 			else if (pressed == KB_ARROW_RIGHT && snake.direction != KB_ARROW_LEFT)
+            {
 				snake.direction = pressed;
+            }
 			// else if (pressed == KB_P)
 			// 	pauseMenu();
 		}
@@ -811,13 +919,18 @@ void s_game_start()
     do
     {
         pressed = s_snake_key_pressed();
-        s_snake_move();
-        s_snake_show();
-        s_screen_buffer_flush();
-        Sleep(500);
-        if (pressed == KB_ESC)
+        game_over=s_snake_move();
+        if (!game_over)
         {
-            game_over = 1;
+            s_snake_show();
+            s_screen_buffer_flush();
+            Sleep(250);
+            //FlushConsoleInputBuffer(screen.h_active);
+            //fflush(stdin);
+            if (pressed == KB_ESC)
+            {
+                game_over = 1;
+            }
         }
     } while (!game_over);
 };
@@ -833,7 +946,7 @@ void s_load_game()
     }
     else
     {
-        s_snake_prepare(40,10,2,KB_ARROW_RIGHT);
+        s_snake_prepare(40,10,20,KB_ARROW_RIGHT);
         s_snake_show();
         s_food_generate();
         s_show_status();
