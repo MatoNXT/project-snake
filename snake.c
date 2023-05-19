@@ -94,7 +94,7 @@
 
 struct SCREEN
 {
-    HANDLE h_stdout, h_active;           // screen handle
+    HANDLE h_stdout, h_active;              // screen handle
     SMALL_RECT rectangle;
     COORD size;
     COORD buffer_coord;
@@ -920,38 +920,31 @@ int s_snake_key_pressed()
         {
             pressed=getch();
         }
-        if (pressed==KB_ESC)
-            {
-                pressed=-1;
-            }
-        else
+        // if getch return 224 or 0, read keyboard once more time
+        if (pressed == 224 || pressed == 0)
         {
-            // if getch return 224 or 0, read keyboard once more time
-            if (pressed == 224 || pressed == 0)
+            pressed=getch();
+        }
+        if (snake.direction != pressed)
+        {
+            if(pressed == KB_ARROW_DOWN && snake.direction != KB_ARROW_UP)
             {
-                pressed=getch();
+                snake.direction = pressed;
             }
-            if (snake.direction != pressed)
+            else if (pressed == KB_ARROW_UP && snake.direction != KB_ARROW_DOWN)
             {
-                if(pressed == KB_ARROW_DOWN && snake.direction != KB_ARROW_UP)
-                {
-                    snake.direction = pressed;
-                }
-                else if (pressed == KB_ARROW_UP && snake.direction != KB_ARROW_DOWN)
-                {
-                    snake.direction = pressed;
-                }
-                else if (pressed == KB_ARROW_LEFT && snake.direction != KB_ARROW_RIGHT)
-                {
-                    snake.direction = pressed;
-                }
-                else if (pressed == KB_ARROW_RIGHT && snake.direction != KB_ARROW_LEFT)
-                {
-                    snake.direction = pressed;
-                }
-                // else if (pressed == KB_P)
-                // 	pauseMenu();
+                snake.direction = pressed;
             }
+            else if (pressed == KB_ARROW_LEFT && snake.direction != KB_ARROW_RIGHT)
+            {
+                snake.direction = pressed;
+            }
+            else if (pressed == KB_ARROW_RIGHT && snake.direction != KB_ARROW_LEFT)
+            {
+                snake.direction = pressed;
+            }
+            // else if (pressed == KB_P)
+            // 	pauseMenu();
         }
 	}
     return pressed;
@@ -991,7 +984,7 @@ void s_load_game()
     }
     else
     {
-        s_snake_prepare(40,10,20,KB_ARROW_RIGHT);
+        s_snake_prepare(40,10,2,KB_ARROW_RIGHT);
         s_snake_show();
         s_food_generate();
         s_show_status();
