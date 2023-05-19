@@ -61,13 +61,14 @@
 #define BG_YELLOW        224
 #define BG_BRIGHT_WHITE  240
 
-#define KB_UP_ARROW 72
-#define KB_LEFT_ARROW 75
-#define KB_RIGHT_ARROW 77
-#define KB_DOWN_ARROW 80
-#define KB_ENTER_KEY 13
-#define KB_EXIT_BUTTON 27 //ESC
-#define KB_PAUSE_BUTTON 112 //P
+#define KB_ARROW_UP 72
+#define KB_ARROW_LEFT 75
+#define KB_ARROW_RIGHT 77
+#define KB_ARROW_DOWN 80
+#define KB_ENTER 13
+#define KB_ESC 27 //ESC
+#define KB_P 112 //P
+
 #define S_PLAYERS 6
 #define S_SCR_COL_MONOCHROME WHITE+BG_BLACK
 #define S_SCR_COL_STATUS BRIGHT_WHITE+BG_BLACK
@@ -80,6 +81,11 @@
 #define S_SCR_LINES 25
 #define S_SCR_COLUMNS 80
 #define S_SCR_BUFFER_SIZE S_SCR_LINES*S_SCR_COLUMNS
+
+#define S_MAX_BODY_LENGTH 500
+#define S_BODY_LINE (char)178
+#define S_BODY_HEAD (char)219
+#define S_BODY_LINE_COL S_SCR_COL_MONOCHROME
 
 struct SCREEN
 {
@@ -107,10 +113,20 @@ struct STATS
     struct SCORE score;
 };
 
+struct SNAKE_BODY
+{
+    int col;
+    int lin;
+    char chr;
+    int att;
+};
+
 struct SNAKE
 {
+    struct SNAKE_BODY body[S_MAX_BODY_LENGTH];
     int speed;
     int length;
+    int direction;
 };
 
 struct SCREEN screen;
@@ -149,11 +165,18 @@ void s_log(const char *message)
     }
 } 
 
-void printxy(int x, int y, const char *s)
+void s_printf_xy(int x, int y, const char *s)
 {
     COORD coord = { x, y};
     SetConsoleCursorPosition(screen.h_active, coord);
     printf("%s",s);
+}
+
+void s_screen_printxy_chr(int col, int lin, const char s, int attr)
+{
+    int position = (lin-1)*80+(col-1);
+    screen.buffer[position].Char.AsciiChar=s;
+    screen.buffer[position].Attributes=attr;
 }
 
 void s_screen_printxy(int col, int lin, const char *s, int attr)
@@ -185,9 +208,7 @@ char s_wait_for_any_key(void)
     int pressed;
 
     while(!kbhit());
-    
     pressed = getch();
-    //pressed = tolower(pressed);
     return((char)pressed);
 }
 
@@ -417,7 +438,7 @@ void s_show_profiles(char *title)
     return;
 }
 
-int s_menu_selection(int x, int y)
+int s_menu_selection(int sel_from, int sel_to)
 {
     int pressed;
     
@@ -426,13 +447,13 @@ int s_menu_selection(int x, int y)
         if(kbhit())
         {
             pressed=getch();
-            if (pressed == 27)
+            if (pressed == KB_ESC)
             {
                 s_screen_clear();
                 pressed = 0;
                 break;
             }
-            if (pressed >= x+48 && pressed <= y+48)
+            if (pressed >= sel_from+48 && pressed <= sel_to+48)
             {
                 pressed = pressed-48;
                 break;
@@ -692,28 +713,117 @@ void s_show_leaderboard()
 //     return(speed);
 // }
 
+void s_snake_prepare(int col, int lin, int length, int direction)
+{
+    snake.length = length;
+    for(int s = 0; s < length; s++ )
+    {
+        snake.body[s].col = col-s;
+        snake.body[s].lin = lin;
+        snake.body[s].chr = S_BODY_LINE;
+        snake.body[s].att = S_BODY_LINE_COL;
+    };
+    snake.body[1].chr = S_BODY_HEAD;
+    snake.speed = 1;
+    snake.direction = direction;
+    // prepare tail - tail will be clearing last part of snake whem moving
+    snake.body[length].col = col-length;
+    snake.body[length].lin = lin;
+    snake.body[length].chr = S_SCR_SPACE;
+    snake.body[length].att = S_SCR_COL_MONOCHROME;
+};
+
+void s_snake_show()
+{
+    for(int s = 1; s < snake.length; s++)
+    {
+        s_screen_printxy_chr(
+            snake.body[s].col,
+            snake.body[s].lin,
+            snake.body[s].chr,
+            snake.body[s].att
+        );
+    }
+};
+
+void s_snake_move()
+{
+    // decide how to move head
+    switch (snake.direction)
+    {
+        case KB_ARROW_RIGHT:
+                snake.body[0].col=+1;
+            break;
+        case KB_ARROW_LEFT:
+                snake.body[0].col=-1;
+            break;
+        case KB_ARROW_UP:
+                snake.body[0].lin=-1;
+            break;
+        case KB_ARROW_DOWN:
+                snake.body[0].lin=+1;
+            break;
+        default:
+            break;
+    }
+    // then move whole body - start from tail
+    for(int s = snake.length; s > 0; s--)
+    {
+        snake.body[s].col = snake.body[s-1].col;
+        snake.body[s].lin = snake.body[s-1].lin;
+    }
+};
+
+void s_food_generate()
+{
+
+};
+
+int s_snake_key_pressed()
+{
+	int pressed;
+	
+	if(kbhit())
+	{
+		pressed=tolower(getch());
+		if (snake.direction != pressed)
+		{
+			if(pressed == KB_ARROW_DOWN && snake.direction != KB_ARROW_UP)
+				snake.direction = pressed;
+			else if (pressed == KB_ARROW_UP && snake.direction != KB_ARROW_DOWN)
+				snake.direction = pressed;
+			else if (pressed == KB_ARROW_LEFT && snake.direction != KB_ARROW_RIGHT)
+				snake.direction = pressed;
+			else if (pressed == KB_ARROW_RIGHT && snake.direction != KB_ARROW_LEFT)
+				snake.direction = pressed;
+			// else if (pressed == KB_P)
+			// 	pauseMenu();
+		}
+	}
+    return pressed;
+};
+
+void s_game_start()
+{
+    int game_over = 0;
+    int pressed;
+
+    do
+    {
+        pressed = s_snake_key_pressed();
+        s_snake_move();
+        s_snake_show();
+        s_screen_buffer_flush();
+        Sleep(500);
+        if (pressed == KB_ESC)
+        {
+            game_over = 1;
+        }
+    } while (!game_over);
+};
+
 void s_load_game()
 {
-    // int snakeXY[2][SNAKE_ARRAY_SIZE]; //Two Dimentional Array, the first array is for the X coordinates and the second array for the Y coordinates
-    
-    // int snakeLength = 4; //Starting Length
-    
-    // int direction = LEFT_ARROW; //DO NOT CHANGE THIS TO RIGHT ARROW, THE GAME WILL INSTANTLY BE OVER IF YOU DO!!! <- Unless the prepairSnakeArray function is changed to take into account the direction....
-    
-    // int foodXY[] = {5,5};// Stores the location of the food
-    
-    // int score = 0;
-    //int level = 1;
-    
-    //Window Width * Height - at some point find a way to get the actual dimensions of the console... <- Also somethings that display dont take this dimentions into account.. need to fix this...
-    // int consoleWidth = 80;
-    // int consoleHeight = 25;
-    
-    // int speed = s_get_game_speed();
-    
-    //The starting location of the snake
-    // snakeXY[0][0] = 40; 
-    // snakeXY[1][0] = 10;
     s_screen_clear();
     if (current_player == -1 || players[current_player].empty )
     {
@@ -723,12 +833,12 @@ void s_load_game()
     }
     else
     {
-        // loadEnviroment(consoleWidth, consoleHeight); //borders
-        // prepairSnakeArray(snakeXY, snakeLength);
-        // loadSnake(snakeXY, snakeLength);
-        // s_generate_food( foodXY, consoleWidth, consoleHeight, snakeXY, snakeLength);
-        // refreshInfoBar(score, speed); //Bottom info bar. Score, Level etc
-        // startGame(snakeXY, foodXY, consoleWidth, consoleHeight, snakeLength, direction, score, speed);
+        s_snake_prepare(40,10,2,KB_ARROW_RIGHT);
+        s_snake_show();
+        s_food_generate();
+        s_show_status();
+        s_screen_buffer_flush();
+        s_game_start();
     }
     return;
 }
