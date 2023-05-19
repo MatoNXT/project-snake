@@ -70,6 +70,7 @@
 #define KB_P 112 //P
 
 #define S_PLAYERS 6
+#define S_DEFAULT_SPEED 250
 #define S_SCR_COL_MONOCHROME WHITE+BG_BLACK
 #define S_SCR_COL_STATUS BRIGHT_WHITE+BG_BLACK
 #define S_SCR_WALL (char)219
@@ -82,7 +83,7 @@
 #define S_SCR_COLUMNS 80
 #define S_SCR_BUFFER_SIZE S_SCR_LINES*S_SCR_COLUMNS
 
-#define S_MAX_BODY_LENGTH 500
+#define S_BODY_MAX_LENGTH 500
 #define S_BODY_LINE (char)178
 #define S_BODY_HEAD (char)219
 #define S_BODY_LINE_COL S_SCR_COL_MONOCHROME
@@ -136,7 +137,7 @@ struct FOOD
 
 struct SNAKE
 {
-    struct SNAKE_BODY body[S_MAX_BODY_LENGTH];
+    struct SNAKE_BODY body[S_BODY_MAX_LENGTH+2];
     int speed;
     int length;
     int direction;
@@ -751,7 +752,7 @@ void s_snake_prepare(int col, int lin, int length, int direction)
         snake.body[s].att = S_BODY_LINE_COL;
     };
     snake.body[0].chr = (char)S_BODY_HEAD;
-    snake.speed = 1;
+    snake.speed = 0;
     snake.direction = direction;
     // prepare tail - tail will be clearing last part of snake whem moving
     snake.body[length].col = col-length;
@@ -781,15 +782,25 @@ void s_snake_show()
     }
 };
 
-void s_snake_food_collision()
+int s_snake_food_collision()
 {
+    int collision = 0;
+
     for(int f = 0; f< S_FOOD_COUNT; f++)
     {
         if (food[f].col != 0 && food[f].lin != 0) // do not check eaten food
         {
             if (food[f].col==snake.body[0].col && food[f].lin==snake.body[0].lin)
             {
-                snake.length+=1;
+                // expand body only if not maximum length
+                if (snake.length<S_BODY_MAX_LENGTH)
+                {
+                    collision=1;
+                    snake.length+=1;
+                    if (snake.speed<=S_DEFAULT_SPEED-5){
+                        snake.speed+=10;
+                    }
+                }
                 // mark food as eaten
                 food[f].col=0;
                 food[f].lin=0;
@@ -797,6 +808,7 @@ void s_snake_food_collision()
         }
     }
     s_food_generate();
+    return collision;
 };
 
 int s_snake_body_collision()
@@ -834,20 +846,21 @@ int s_snake_collision()
     {
         return 1;
     }
-    s_snake_food_collision();
+    if (s_snake_food_collision())
+    {
+        return 2;
+    }
     return 0;
 };
 
 int s_snake_move()
 {
     int collision = 0;
-    // move whole body - start from tail
-    for(int s = snake.length; s > 0; s--)
-    {
-        snake.body[s].col = snake.body[s-1].col;
-        snake.body[s].lin = snake.body[s-1].lin;
-    }
-    // last - move head
+    struct SNAKE_BODY head;
+    
+    // remember old head position for later
+    head=snake.body[0];
+    // move head to new position
     switch (snake.direction)
     {
         case KB_ARROW_RIGHT:
@@ -865,7 +878,35 @@ int s_snake_move()
         default:
             break;
     }
+    // now check where is head
     collision = s_snake_collision();
+    if (collision==0)
+        {
+        // move whole body - start from tail
+        for(int s = snake.length; s > 1; s--)
+        {
+            snake.body[s].col = snake.body[s-1].col;
+            snake.body[s].lin = snake.body[s-1].lin;
+        }
+        // move fist body part to head old position
+        snake.body[1].col = head.col;
+        snake.body[1].lin = head.lin;
+    }
+    else if (collision==2) // food eaten
+    {
+        // expand body 1
+        for(int s = snake.length; s > 1; s--)
+        {
+            snake.body[s] = snake.body[s-1];
+        }
+        // move new body part to head old position
+        snake.body[1].col = head.col;
+        snake.body[1].lin = head.lin;
+        snake.body[1].chr=S_BODY_LINE;
+        snake.body[1].att=S_BODY_LINE_COL;
+        // reset colision as this was just food so continue in game
+        collision=0;
+    }
     return collision;
 };
 
@@ -879,32 +920,39 @@ int s_snake_key_pressed()
         {
             pressed=getch();
         }
-        // if getch return 224 or 0, read keyboard once more time
-        if (pressed == 224 || pressed == 0)
+        if (pressed==KB_ESC)
+            {
+                pressed=-1;
+            }
+        else
         {
-            pressed=getch();
+            // if getch return 224 or 0, read keyboard once more time
+            if (pressed == 224 || pressed == 0)
+            {
+                pressed=getch();
+            }
+            if (snake.direction != pressed)
+            {
+                if(pressed == KB_ARROW_DOWN && snake.direction != KB_ARROW_UP)
+                {
+                    snake.direction = pressed;
+                }
+                else if (pressed == KB_ARROW_UP && snake.direction != KB_ARROW_DOWN)
+                {
+                    snake.direction = pressed;
+                }
+                else if (pressed == KB_ARROW_LEFT && snake.direction != KB_ARROW_RIGHT)
+                {
+                    snake.direction = pressed;
+                }
+                else if (pressed == KB_ARROW_RIGHT && snake.direction != KB_ARROW_LEFT)
+                {
+                    snake.direction = pressed;
+                }
+                // else if (pressed == KB_P)
+                // 	pauseMenu();
+            }
         }
-		if (snake.direction != pressed)
-		{
-			if(pressed == KB_ARROW_DOWN && snake.direction != KB_ARROW_UP)
-            {
-        		snake.direction = pressed;
-            }
-			else if (pressed == KB_ARROW_UP && snake.direction != KB_ARROW_DOWN)
-            {
-				snake.direction = pressed;
-            }
-			else if (pressed == KB_ARROW_LEFT && snake.direction != KB_ARROW_RIGHT)
-            {
-				snake.direction = pressed;
-            }
-			else if (pressed == KB_ARROW_RIGHT && snake.direction != KB_ARROW_LEFT)
-            {
-				snake.direction = pressed;
-            }
-			// else if (pressed == KB_P)
-			// 	pauseMenu();
-		}
 	}
     return pressed;
 };
@@ -921,11 +969,12 @@ void s_game_start()
         if (!game_over)
         {
             s_snake_show();
+            s_show_status();
             s_screen_buffer_flush();
-            Sleep(250);
+            Sleep(S_DEFAULT_SPEED-snake.speed);
             if (pressed == KB_ESC)
             {
-                game_over = 1;
+                //game_over = 1;
             }
         }
     } while (!game_over);
