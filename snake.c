@@ -113,6 +113,7 @@ struct STATS
     int id;
     int empty;
     int current;
+    int current_r;
     char name[21];
     char surname[21];
     struct SCORE score;
@@ -530,7 +531,7 @@ void s_sort(int attr)
             change = 0;
             for (int i=0; i < S_PLAYERS-1; i++)
             {
-                if (players[ndx[i]].score.round[x] > players[ndx[i+1]].score.round[x])
+                if (players[ndx[i]].score.round[x] < players[ndx[i+1]].score.round[x])
                 {
                     tmp = ndx[i];
                     ndx[i] = ndx[i+1];
@@ -547,7 +548,7 @@ void s_sort(int attr)
             change = 0;
             for (int i=0; i < S_PLAYERS-1; i++)
             {
-                if (players[ndx[i]].score.total > players[ndx[i+1]].score.total)
+                if (players[ndx[i]].score.total < players[ndx[i+1]].score.total)
                 {
                     tmp = ndx[i];
                     ndx[i] = ndx[i+1];
@@ -685,7 +686,7 @@ void s_show_leaderboard()
         {
             if (selection == 4 )
             {
-                selection == s_sort_round();
+                selection = s_sort_round();
             }
             s_sort(selection);
         } 
@@ -799,6 +800,7 @@ int s_snake_food_collision()
                     snake.length+=1;
                     if (snake.speed<=S_DEFAULT_SPEED-5){
                         snake.speed+=10;
+                        players[current_player].score.round[players[current_player].current_r]   +=10;
                     }
                 }
                 // mark food as eaten
@@ -954,23 +956,34 @@ void s_game_start()
 {
     int game_over = 0;
     int pressed;
-
+    players[current_player].current_r = 0;
     do
     {
-        pressed = s_snake_key_pressed();
-        game_over=s_snake_move();
-        if (!game_over)
+        s_screen_clear();
+        s_snake_prepare(40,10,2,KB_ARROW_RIGHT);
+        s_snake_show();
+        s_food_generate();
+        s_show_status();
+        s_screen_buffer_flush();
+        do
         {
-            s_snake_show();
-            s_show_status();
-            s_screen_buffer_flush();
-            Sleep(S_DEFAULT_SPEED-snake.speed);
-            if (pressed == KB_ESC)
+
+            pressed = s_snake_key_pressed();
+            game_over=s_snake_move();
+            if (!game_over)
             {
-                //game_over = 1;
+                s_snake_show();
+                s_show_status();
+                s_screen_buffer_flush();
+                Sleep(S_DEFAULT_SPEED-snake.speed);
+                if (pressed == KB_ESC)
+                {
+                    game_over = 1;
+                }
             }
-        }
-    } while (!game_over);
+        } while (!game_over);
+        players[current_player].current_r+=1;
+    } while(players[current_player].current_r < 3);
 };
 
 void s_load_game()
@@ -984,11 +997,6 @@ void s_load_game()
     }
     else
     {
-        s_snake_prepare(40,10,2,KB_ARROW_RIGHT);
-        s_snake_show();
-        s_food_generate();
-        s_show_status();
-        s_screen_buffer_flush();
         s_game_start();
     }
     return;
