@@ -179,7 +179,16 @@ void s_log(const char *message)
     { 
         fprintf(f_log_file, "[%s] %s\n", timestamp, message);
     }
-} 
+}
+
+void s_score_calculate(int player)
+{
+    players[player].score.total = 0;
+    for(int i = 0; i < 3; i++) //calculate total score from all rounds
+    {
+        players[player].score.total += players[player].score.round[i];
+    }
+}
 
 void s_printf_xy(int x, int y, const char *s)
 {
@@ -341,6 +350,7 @@ void s_load()
                 strcpy(players[i].name,"~~~~~~~~~~~~~~~~~~~~");
                 strcpy(players[i].surname,"~~~~~~~~~~~~~~~~~~~~");
             }
+             s_score_calculate(i);
         }
     } 
 }
@@ -408,21 +418,25 @@ void s_close()
 void s_show_status()
 {
     char tmp_str[81];
+    s_score_calculate(current_player);
     s_screen_printxy(2,21,"Profile:                                                            Speed:    ",S_SCR_COL_STATUS);
     s_screen_printxy(2,22,"Score:                                                             Length:    ",S_SCR_COL_STATUS);
     s_screen_printxy(2,23,"                                                                              ",S_SCR_COL_STATUS);
     s_screen_printxy(2,24,"                                                                              ",S_SCR_COL_STATUS);
-    s_screen_printxy(1,25," Coder: Martin Musec, 2a1                                              (c) 2023 ",GRAY+BG_WHITE);
+    s_screen_printxy(1,25," Coder: Martin Musec, A2b                                              (c) 2023 ",GRAY+BG_WHITE);
     if(current_player != -1)
     {
         if ( !players[current_player].empty )
         {
             sprintf(tmp_str,"%s %s", players[current_player].name, players[current_player].surname);
             s_screen_printxy(11,21,tmp_str,S_SCR_COL_STATUS);
+
             sprintf(tmp_str,"%5d", players[current_player].score.total);
             s_screen_printxy(11,22,tmp_str,S_SCR_COL_STATUS);
+
             sprintf(tmp_str,"%3d", snake.speed);
             s_screen_printxy(77,21,tmp_str,S_SCR_COL_STATUS);
+            
             sprintf(tmp_str,"%3d", snake.length);
             s_screen_printxy(77,22,tmp_str,S_SCR_COL_STATUS);
         }
