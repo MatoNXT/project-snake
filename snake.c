@@ -314,6 +314,22 @@ void s_screen_show_cursor()
    SetConsoleCursorInfo(screen.h_active, &info);
 }
 
+int s_ask_yn(char *title)
+{
+    char pressed;
+    s_screen_printxy((S_SCR_COLUMNS-strlen(title))/2,23,title,YELLOW + BG_RED);
+    s_screen_buffer_flush();
+    
+    do
+    {
+        pressed = s_wait_for_any_key();
+        pressed = tolower(pressed);
+    } while (!(pressed == 'y' || pressed == 'n'));
+    s_screen_printxy(5,23,"                                                                      ",S_SCR_COL_MONOCHROME);
+    s_screen_buffer_flush();
+    return pressed == 'y';
+}
+
 int s_save()
 {
     f_player_stats = fopen("playerstats.dat","wb");
@@ -350,7 +366,8 @@ void s_load()
                 strcpy(players[i].name,"~~~~~~~~~~~~~~~~~~~~");
                 strcpy(players[i].surname,"~~~~~~~~~~~~~~~~~~~~");
             }
-             s_score_calculate(i);
+            players[i].current_r = 0;
+            s_score_calculate(i);
         }
     } 
 }
@@ -416,10 +433,10 @@ void s_close()
 }
 
 void s_show_status()
-{
+{ 
     char tmp_str[81];
     s_score_calculate(current_player);
-    s_screen_printxy(2,21,"Profile:                                                            Speed:    ",S_SCR_COL_STATUS);
+    s_screen_printxy(2,21,"Profile:                      Round:                                 Speed:    ",S_SCR_COL_STATUS);
     s_screen_printxy(2,22,"Score:                                                             Length:    ",S_SCR_COL_STATUS);
     s_screen_printxy(2,23,"                                                                              ",S_SCR_COL_STATUS);
     s_screen_printxy(2,24,"                                                                              ",S_SCR_COL_STATUS);
@@ -433,6 +450,9 @@ void s_show_status()
 
             sprintf(tmp_str,"%5d", players[current_player].score.total);
             s_screen_printxy(11,22,tmp_str,S_SCR_COL_STATUS);
+
+            sprintf(tmp_str,"%5d", players[current_player].current_r);
+            s_screen_printxy(38,21,tmp_str,S_SCR_COL_STATUS);
 
             sprintf(tmp_str,"%3d", snake.speed);
             s_screen_printxy(77,21,tmp_str,S_SCR_COL_STATUS);
@@ -654,16 +674,16 @@ void s_select_profile()
         }
         else // if profile is not empty ask if profile will be overwritten
         {
-            s_screen_printxy(6,15,"Overwrite existing profile? [Y/N]",S_SCR_COL_MONOCHROME);
-            s_screen_buffer_flush();
-            do
-            {
-                pressed = s_wait_for_any_key();
-                pressed = tolower(pressed);
-            } while (!(pressed == 'y' || pressed == 'n'));
-            s_screen_printxy(6,15,"                                 ",S_SCR_COL_MONOCHROME);
-            s_screen_buffer_flush();
-            if (pressed == 'y')
+            // s_screen_printxy(6,15,"Overwrite existing profile? [Y/N]",S_SCR_COL_MONOCHROME);
+            // s_screen_buffer_flush();
+            // do
+            // {
+            //     pressed = s_wait_for_any_key();
+            //     pressed = tolower(pressed);
+            // } while (!(pressed == 'y' || pressed == 'n'));
+            // s_screen_printxy(6,15,"                                 ",S_SCR_COL_MONOCHROME);
+            // s_screen_buffer_flush();
+            if (s_ask_yn("Overwrite existing profile? [Y/N]"))
             {
                 s_enter_player(selection-1);
             }
@@ -970,7 +990,7 @@ void s_game_start()
 {
     int game_over = 0;
     int pressed;
-    players[current_player].current_r = 0;
+    players[current_player].current_r = 1;
     do
     {
         s_screen_clear();
@@ -992,12 +1012,29 @@ void s_game_start()
                 Sleep(S_DEFAULT_SPEED-snake.speed);
                 if (pressed == KB_ESC)
                 {
-                    game_over = 1;
+                    // if (s_ask_yn(" >>> Are you sure you want to exit(Y/N) <<< "))
+                    // { 
+                    //     game_over = 1;
+                    // }
+                    // else
+                    // {
+                    //     game_over = 0;
+                    // }
+
+                    game_over=s_ask_yn(" >>> Are you sure you want to exit round (Y/N) <<< ");
                 }
             }
         } while (!game_over);
+        if (pressed == KB_ESC)
+        {
+            if (s_ask_yn(" >>> Are you sure you want to exit game (Y/N) <<< "))
+            { 
+                break;
+            }
+        }
         players[current_player].current_r+=1;
-    } while(players[current_player].current_r < 3);
+    } while(players[current_player].current_r <= 3);
+    players[current_player].current_r = 0;
 };
 
 void s_load_game()
@@ -1018,18 +1055,7 @@ void s_load_game()
 
 int s_exit(void)
 {
-    char pressed;
-
-    s_screen_printxy(23,15,"Are you sure you want to exit(Y/N)",S_SCR_COL_MONOCHROME);
-    s_screen_buffer_flush();
-    
-    do
-    {
-        pressed = s_wait_for_any_key();
-        pressed = tolower(pressed);
-    } while (!(pressed == 'y' || pressed == 'n'));
-    
-    if (pressed == 'y')
+    if (s_ask_yn(" >>> Are you sure you want to exit(Y/N) <<< "))
     {
         s_save();
         s_close();
