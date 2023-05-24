@@ -7,7 +7,7 @@
 //  
 //  TODO:
 //  - suppress new lines while entering name/surname
-//  - better delay
+//  - better game speed delay
 //   
 //  REFERENCES:
 //  this project          - https://github.com/MatoNXT/project-snake/blob/main/snake.c
